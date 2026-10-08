@@ -1,1 +1,84 @@
-{"citations": [{"cite_id": "k1", "doc_id": "bnss_2023", "raw": "BNSS, 2023", "resolved": true}, {"cite_id": "k2", "doc_id": "case_file_demo", "raw": "FIR 0123/2024", "resolved": true}], "claims": [{"chunk_ids": ["bnss_2023::p1::c0"], "claim_id": "c1", "quote": "bail is not a matter of right", "status": "verified", "text": "In non-bailable offences, bail is not a matter of right."}, {"chunk_ids": ["bnss_2023::p1::c0"], "claim_id": "c2", "quote": "judicial discretion", "status": "verified", "text": "The court decides bail in such offences by judicial discretion."}, {"chunk_ids": ["case_file_demo::p1::c0"], "claim_id": "c3", "quote": "joined investigation on 10.02.2024", "status": "verified", "text": "The accused joined investigation on 10.02.2024."}, {"chunk_ids": ["bnss_2023::p2::c1"], "claim_id": "c4", "quote": "cognizable offence on Mars", "status": "unsupported", "text": "The offence occurred on Mars.", "verifier_note": "quote not found in cited chunk"}], "confidence": 0.78, "contradictions": [], "missing_info": [], "refused": false, "refusal_reason": null, "text": "- In non-bailable offences, bail is not a matter of right. [c1]\n- The court decides bail in such offences by judicial discretion. [c2]\n- The accused joined investigation on 10.02.2024. [c3]\n\nSources:\n[c1] bnss_2023::p1::c0: \"bail is not a matter of right\"\n[c2] bnss_2023::p1::c0: \"judicial discretion\"\n[c3] case_file_demo::p1::c0: \"joined investigation on 10.02.2024\"", "trace": {"dropped": 1, "latency_ms": 12, "retrieved_chunk_ids": ["bnss_2023::p1::c0", "bnss_2023::p2::c1", "case_file_demo::p1::c0"]}, "workflow": "chat"}
+{
+  "citations": [
+    {
+      "cite_id": "k1",
+      "doc_id": "bnss_2023",
+      "raw": "BNSS, 2023",
+      "resolved": true
+    },
+    {
+      "cite_id": "k2",
+      "doc_id": "case_file_demo",
+      "raw": "FIR 0123/2024",
+      "resolved": true
+    }
+  ],
+  "claims": [
+    {
+      "chunk_ids": [
+        "bnss_2023::p1::c0"
+      ],
+      "claim_id": "c1",
+      "quote": "bail is not a matter of right",
+      "status": "verified",
+      "text": "In non-bailable offences, bail is not a matter of right."
+    },
+    {
+      "chunk_ids": [
+        "bnss_2023::p1::c0"
+      ],
+      "claim_id": "c2",
+      "quote": "judicial discretion",
+      "status": "verified",
+      "text": "The court decides bail in such offences by judicial discretion."
+    },
+    {
+      "chunk_ids": [
+        "case_file_demo::p1::c0"
+      ],
+      "claim_id": "c3",
+      "quote": "joined investigation on 10.02.2024",
+      "status": "verified",
+      "text": "The accused joined investigation on 10.02.2024."
+    },
+    {
+      "chunk_ids": [
+        "bnss_2023::p2::c1"
+      ],
+      "claim_id": "c4",
+      "quote": "cognizable offence on Mars",
+      "status": "unsupported",
+      "text": "The offence occurred on Mars.",
+      "verifier_note": "quote not found in cited chunk"
+    }
+  ],
+  "confidence": 0.78,
+  "contradictions": [],
+  "missing_info": [
+    {
+      "field": "exhaustive coverage",
+      "why_needed": "list built from the top-k retrieved chunks; other matching cases may exist",
+      "searched_in": []
+    }
+  ],
+  "refused": false,
+  "refusal_reason": null,
+  "text": "- In non-bailable offences, bail is not a matter of right. [c1]\n- The court decides bail in such offences by judicial discretion. [c2]\n- The accused joined investigation on 10.02.2024. [c3]\n\nSources:\n[c1] bnss_2023::p1::c0: \"bail is not a matter of right\"\n[c2] bnss_2023::p1::c0: \"judicial discretion\"\n[c3] case_file_demo::p1::c0: \"joined investigation on 10.02.2024\"",
+  "trace": {
+    "dropped": 1,
+    "latency_ms": 12,
+    "retrieved_chunk_ids": [
+      "bnss_2023::p1::c0",
+      "bnss_2023::p2::c1",
+      "case_file_demo::p1::c0"
+    ],
+    "retrieval": {
+      "list_intent": true,
+      "top_k_used": 4,
+      "doc_type_counts": {
+        "judgment": 2
+      }
+    }
+  },
+  "workflow": "chat"
+}
