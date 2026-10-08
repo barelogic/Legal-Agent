@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-09, at `d78dd9d` on main (P2-swap batch merged, pushed to origin).
+Updated: 2026-10-09, at `e9f473a` on main (validation batch merged, pushed to origin).
 
 ## Landed on main (all pushed to origin)
 
@@ -26,6 +26,11 @@ Updated: 2026-10-09, at `d78dd9d` on main (P2-swap batch merged, pushed to origi
 - `d78dd9d` Corrections + P2-swap batch (merge `origin/core/phase-1` → main,
   pushed): routing-judgment merge, `LLM_TEMPERATURE` + `trace["llm"]`,
   P2 planted-pair test + MockClient abbreviation fix. 177 green.
+- `e9f473a` Validation batch (merge `origin/core/phase-1` → main, pushed):
+  `AskIn.question` defaults to `""` (draft/review reachable over HTTP —
+  required-field 422 had made `run()`'s defaults dead code), draft field
+  retrieval `min_overlap=1` (unseen-doc run caught FIR going MISSING),
+  17/17 unseen-doc validation. 179 green.
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
@@ -255,7 +260,7 @@ first run's ~0s were a script bug — wrong gold file — retracted above):
   + regression-tested. Venue: models fine, VRAM is the constraint — set
   `EMBED_DEVICE=cpu` on a busy GPU (embeddings cache in `data/chroma/`).
 
-## Validation run on an unseen doc (2026-10-09, branch HEAD, unmerged)
+## Validation run on an unseen doc (2026-10-09, merged `e9f473a`, pushed)
 
 Frozen-target rehearsal: fresh synthetic case file (`FIR 0789/2026`, unseen
 vocab) ingested live via `/ingest`, then all workflows over HTTP (mock LLM,
