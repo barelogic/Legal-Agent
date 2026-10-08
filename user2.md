@@ -1,7 +1,38 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-09 — court ingestion landed (6,196 docs); suite re-running on big corpus.
+Updated: 2026-10-09 — ladder + E4 live run launched (Ollama); P1 flags imported.
+
+## Ladder + E4 (this session, commit `52b1a79`)
+
+- P1's newest work lived only on local `core/phase-1` (unpushed): relevance
+  gates (`MIN_COVERAGE`/`RERANK_MIN_SCORE`), A3 `workflows.flags.run()`,
+  verifier hardening, B1/B2/B3 draft/review/research. A full merge would
+  have DELETED `eval/`+`corpus/` (that branch lacks them), so: selective
+  `git checkout core/phase-1 -- <P1-owned paths>` onto `eval/data-eval`,
+  committed as `52b1a79` (P1 files verbatim; only eval-side addition is
+  trace-based plain detection in `eval/metrics_grounded.py`). Schemas clean.
+- New harness (all `eval/`, mock-pinned tests green): `eval/ladder.py`
+  (L0→L8 cumulative on dev n=30, top_k=4 fixed, shipped top-5 baseline as
+  reference; writes `results/ladder.{json,md,svg}` + `results/compare.jsonl`),
+  `eval/workflow_metrics.py` (E4: draft precision/missing-recall/fab,
+  review planted-P/R + natural, research cite-resolution).
+- Live run in background: Ollama `llama3.1:8b`, `LLM_JUDGE_MODEL=llama3.1:8b`
+  (entailment judge = same model, separate strict call — logged; eval
+  usefulness judge stays `deterministic-fallback` ≠ pipeline). Reranker
+  `BAAI/bge-reranker-base` cached locally, so the rerank step is real.
+  Per-query try/except → refused-with-error (one timeout already seen on
+  cold Ollama; won't kill the run). ETA ~1–2h.
+- I4 `compare.jsonl` schema (v1, per line): `{qid, question, answerable,
+  trap, ours: {system L8, text, refused, claims[], citations[], latency_ms},
+  baseline: {system, text, refused, atomic_claims[], supported[],
+  unsupported_claims[], unresolved_citations, groundedness},
+  delta: {ours_refused, baseline_refused, baseline_fab}}`.
+  P3: file at `eval/results/compare.jsonl` (gitignored runtime state —
+  read it from this worktree, same machine).
+- NOT pushed to main yet: merge + push after the live run lands and the
+  tables below are refreshed. E4 gold (hand-read from D1 files) lives in
+  `eval/workflow_metrics.py` (`GOLD`, `EXPECTED_MISSING`, planted pair).
 
 ## Corpus expansion (this session — S3 courts + HF legal sets)
 
