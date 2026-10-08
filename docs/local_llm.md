@@ -65,8 +65,10 @@ fetch manifests stay tracked (see `corpus/README.md`).
    `openai_compatible-live`) and judge `deterministic-fallback`.
 4. Streamlit via fixtures still renders (`Use fixtures` toggle, user3).
 
-Status: PENDING — background dev-split run in progress at write time;
-network-off rerun queued after it lands.
+Status: DONE 2026-10-09 (`nmcli networking off`): `ops/check_local.py` →
+`ok:true`, tags `["llama3.1:8b"]`; live smoke `bail in non-bailable
+offences?` → 1 candidate, verified 1 / dropped 0, 19631ms — fully local,
+zero network. Networking restored after (`enabled`).
 
 ## Measured numbers (dev split only; never holdout)
 
@@ -109,7 +111,35 @@ default pipeline stays `full_lexical_verified` on `llama3.1:8b` local.
 
 My own full dev-split rerun on this branch (seeds registry,
 `--corpus registry`, out to `/tmp/opencode/local-llm-results/` so `eval/`
-stays untouched): RUNNING at write time — table lands in `user4.md` next.
+stays untouched): DONE 2026-10-09 — table below. Small-n by construction
+(gold n=6, 3 answerable; trap n=3), so trap_ref_R=1.000 is weak evidence;
+the claim that matters (verifier acceptance on answerables + fab=0) holds.
+
+Config: `openai_compatible:llama3.1:8b` (Q4_K_M, serving ctx 4096 loaded /
+max 131072), `EMBED_MODEL=tfidf-local` (dense OFF), `RETRIEVAL_BACKEND=lexical`
+(`hybrid_verified` via HybridIndex BM25 leg), judge `deterministic-fallback`
+(configured name `gemini-2.5-flash`, no key → fallback; zero `mock-fallback`
+in `metrics.json`), machine RTX 4060 Laptop 8GB driver 615.71.09.
+
+| system | hit_rate | recall@k | mrr | grounded* | fab_count | trap_ref_R | use/5 | lat_ms |
+|---|---|---|---|---|---|---|---|---|
+| full_lexical_verified | 1.000 | 1.000 | 1.000 | 1.000 | 0 | 1.000 (n=3) | 5.000 | 11943 |
+| baseline_no_verify | 1.000 | 1.000 | 1.000 | 1.000 | 0 | 1.000 (n=3) | 5.000 | 5726 |
+| hybrid_verified | 1.000 | 1.000 | 1.000 | 1.000 | 0 | 1.000 (n=3) | 5.000 | 8410 |
+| baseline_injected (synthetic) | 1.000 | 1.000 | 1.000 | 1.000 | 5 (rate 0.833) | 0.333 (n=3) | 3.167 | 5762 |
+| baseline_plain_rag | 1.000 | 1.000 | 1.000 | 0.933 | 3 (rate 0.500) | 0.333 (n=3) | 3.333 | 9865 |
+
+\*verified_rate (claim pipelines) / mean atomic-claim support (plain RAG).
+Reading: on answerables the local model is fully verifier-accepted
+(3/3, fab 0) on both lexical and hybrid; the injected fault is caught
+(5 fab vs 0 clean, delta 0.833); plain free-text RAG fabricates (3, rate
+0.500) and near-halves trap refusal — same ranking as user2's 47-doc table,
+at ceiling on this toy corpus (retrieval 1.000 everywhere, verifier
+on/off delta 0.0 on clean candidates). Verifier-acceptance judging says:
+ship `full_lexical_verified` on local `llama3.1:8b`.
+Machine note: ST weight loads logged CUDA OOM warnings (resident Ollama held
+most of the 8GB) — retrieval stayed lexical as designed; dense prefetch
+(`ops/pull_models.sh` ST warm) must run with Ollama unloaded at the venue.
 
 ## Patches owed to owners
 
