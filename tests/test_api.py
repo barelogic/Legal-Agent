@@ -67,4 +67,5 @@ def test_hybrid_fallthrough_recorded(monkeypatch):
     assert r.status_code == 200
     body = r.json()
     assert body["trace"]["backend"] == "lexical"
+    assert "hybrid failed" in body["trace"]["fallback"]
     assert any("hybrid failed" in f for f in body["trace"]["fallbacks"])

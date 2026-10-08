@@ -111,6 +111,27 @@ trace-dict/optional fields only, `contracts/schemas.py` untouched).
 - False refusals: **12/30, identical set to baseline**, verifier-caused none.
   Suite: **89 passed** (78 + 11 new).
 
+## Relevance gates (2026-10-08, on `core/phase-1`, unmerged)
+
+Trap queries share 3-4 content words, which `min_overlap=2` cannot refuse.
+New levers, all env-configurable (P2 sweep owns the values; held-out split
+never used for tuning):
+
+- `MIN_COVERAGE` (default **0.32**): fraction of distinct query content
+  tokens a chunk must contain (lexical + hybrid BM25 legs; explicit
+  section-label asks bypass). Default from allowed-split analysis on the
+  full 1485-chunk corpus: lowest non-holdout answerable 4/12=0.333 (q025),
+  highest separable non-holdout trap 4/13=0.308 (q007). Separates exactly
+  one trap — the rest need the reranker, honestly reported, not hidden.
+- `RERANK_MIN_SCORE` (default **0.0**, logit sign boundary, pending sweep):
+  cross-encoder cutoff in `HybridIndex._rerank`; emptied list refuses
+  downstream. Dense leg stays token-ungated by design; this cutoff is its
+  only gate (no reranker lib → no gate, as before).
+- `api/main.py`: every fallback now sets `Answer.trace.fallback` (singular
+  reason) + `logger.warning`; the `fallbacks` list is kept.
+- P2 parameter names: `MIN_COVERAGE`, `RERANK_MIN_SCORE`
+  (plus existing `VERIFY_*`, `TOP_K`). Env docs in `.env.example`.
+
 ## h001 short-query net (2026-10-08, on `core/phase-1`, unmerged)
 
 Note: `/home/frost/corrections-h001.md` (holdout h001, main @ `c790417`).

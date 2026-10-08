@@ -1,10 +1,13 @@
 """FastAPI entrypoint: grounded legal assistant (refuse-by-default)."""
 
+import logging
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 from contracts.schemas import Answer, Chunk
 from generation.config import get_top_k
@@ -94,11 +97,13 @@ def post_answer(body: AskIn) -> Answer:
             raise
         except Exception as e:
             cause = f"hybrid failed ({e}); falling through to lexical"
+            logger.warning("answer fallthrough: %s", cause)
             try:
                 ans = answer_question(body.question, body.workflow, REGISTRY, llm, top_k=top_k)
             except Exception as e2:
                 raise HTTPException(status_code=503, detail=f"LLM/retrieval failed: {e2}")
             ans.trace["backend"] = "lexical"
+            ans.trace["fallback"] = cause
             ans.trace.setdefault("fallbacks", []).append(cause)
             return ans
     try:
@@ -137,11 +142,13 @@ def post_ingest(
         rebuild_index()
     except Exception as e:
         # Best-effort: lexical registry already updated; surface, don't swallow.
+        note = f"hybrid index rebuild failed: {e}"
+        logger.warning("ingest: %s", note)
         resp = {
             "doc": doc.model_dump(),
             "num_chunks": len(chunks),
             "chunk_ids": [c.chunk_id for c in chunks],
-            "index_note": f"hybrid index rebuild failed: {e}",
+            "index_note": note,
         }
         return resp
     return {
@@ -173,11 +180,13 @@ def post_ingest_hf(body: HfIn) -> dict:
         rebuild_index()
     except Exception as e:
         # Best-effort: registry already updated; surface, don't swallow.
+        note = f"hybrid index rebuild failed: {e}"
+        logger.warning("ingest/hf: %s", note)
         return {
             "num_docs": len(docs),
             "num_chunks": len(chunks),
             "doc_ids": [d.doc_id for d in docs],
-            "index_note": f"hybrid index rebuild failed: {e}",
+            "index_note": note,
         }
     return {
         "num_docs": len(docs),

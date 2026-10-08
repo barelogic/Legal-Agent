@@ -39,3 +39,24 @@ def test_single_term_query_must_match_fully():
 
 def test_single_token_overlap_allowed_when_relaxed():
     assert _one_token_reg().search("xyzzy quantum frobnication", min_overlap=1) != []
+
+
+def test_coverage_blocks_low_fraction_overlap():
+    # trap shape: 3 shared words of a 10-token query (0.30 < 0.32 default)
+    reg = Registry()
+    doc = Doc(doc_id="d1", title="T", doc_type="statute")
+    reg.register_doc(doc)
+    reg.add_chunks(chunk_text(doc, "bail granted arrested person offence court trial"))
+    q = "bail arrested person fictitious gibberish wololo furniture zebra quartz megablast"
+    assert reg.search(q, min_overlap=1) == []
+    assert reg.search(q, min_overlap=1, min_coverage=0.0) != []
+
+
+def test_coverage_env_override(monkeypatch):
+    monkeypatch.setenv("MIN_COVERAGE", "0.0")
+    reg = Registry()
+    doc = Doc(doc_id="d1", title="T", doc_type="statute")
+    reg.register_doc(doc)
+    reg.add_chunks(chunk_text(doc, "bail granted arrested person offence court trial"))
+    q = "bail arrested person fictitious gibberish wololo furniture zebra quartz megablast"
+    assert reg.search(q, min_overlap=1) != []
