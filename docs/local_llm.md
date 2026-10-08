@@ -141,6 +141,23 @@ Machine note: ST weight loads logged CUDA OOM warnings (resident Ollama held
 most of the 8GB) — retrieval stayed lexical as designed; dense prefetch
 (`ops/pull_models.sh` ST warm) must run with Ollama unloaded at the venue.
 
+## Known local failure modes (corrections U1/U2, measured 2026-10-09)
+
+Same provenance as above (`llama3.1:8b`, Q4_K_M, serving ctx 4096, RTX 4060):
+
+- **U1 chunk-ID truncation**: 4-chunk long-ID probe → **0/4 exact chunk_ids**
+  (model emitted bare doc_ids, all `::pN::cM` suffixes stripped) → verifier
+  drops → honest refusal. With an appended ID-fidelity hint → 2/2 exact
+  (2-chunk shape). Patches (prompt sentence + verifier doc-prefix repair
+  that keeps the verbatim guarantee) handed to user1 in `user4.md` Steps 7–8
+  area — NOT applied here (frozen dirs).
+- **U2 60s timeout**: 4-chunk prompt + hint → `ReadTimeout` at exactly 60s
+  (hardcoded in `generation/llm.py:75,109`); 2-chunk ≈48s; seeds top_k=4
+  ≈17–19s. Fix = `LLM_TIMEOUT` env patch, handed to user1; venue `.env`
+  will set 180 once it lands. No silent `TOP_K` cut (eval comparability).
+- **Venue embedding device**: `EMBED_DEVICE=cpu` pinned in
+  `ops/env.local-llm.example` (core env since `25de873`; GPU OOM measured).
+
 ## Patches owed to owners
 
 None. No frozen-dir change was needed (provider switch + env pins suffice).
