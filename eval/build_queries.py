@@ -28,7 +28,7 @@ def _norm(s: str) -> str:
 
 def load_queries(path: Path) -> list[dict]:
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    assert len(rows) == 40, f"expected 40 queries, got {len(rows)}"
+    assert len(rows) == 50, f"expected 50 queries, got {len(rows)}"
     return rows
 
 
@@ -64,9 +64,9 @@ def main(argv: list[str] | None = None) -> int:
                 continue
             r = dict(r, gold_chunk_ids=[], gold_doc_ids=[])
         resolved.append(r)
-    assert by_wf == {"chat": 10, "review": 10, "research": 10, "draft": 10}, by_wf
-    assert n_trap == 10, f"need 10 traps, got {n_trap}"
-    assert n_hold == 10, f"need 10 holdout, got {n_hold}"
+    assert by_wf == {"chat": 13, "review": 12, "research": 13, "draft": 12}, by_wf
+    assert n_trap == 20, f"need 20 traps, got {n_trap}"
+    assert n_hold == 14, f"need 14 holdout, got {n_hold}"
     if errors:
         print("QUERY ERRORS:"); [print(" -", e) for e in errors]
         return 2
