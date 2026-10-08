@@ -111,6 +111,12 @@ trace-dict/optional fields only, `contracts/schemas.py` untouched).
 - False refusals: **12/30, identical set to baseline**, verifier-caused none.
   Suite: **89 passed** (78 + 11 new).
 
+  Correction to the sweep's "fixes landed" note: `max_scan` does NOT count
+  kept rows only — it is a scan budget over every streamed row *including*
+  skipped ones (see `iter_hf_rows` docstring). Counting kept-only would
+  unbind the 17M-row stream; short filtered ingests are the budget working,
+  fixed by raising `max_scan`, not by code change.
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).
