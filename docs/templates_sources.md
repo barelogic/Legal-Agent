@@ -2,7 +2,13 @@
 
 Structures below inform `templates/*.json`. No statutory section numbers
 are baked into the templates — provisions stay fill-in fields sourced from
-retrieved documents at answer time.
+retrieved documents at answer time. Every required field carries a
+`retrieval_query`: keyword queries aimed at where the value lives (FIR /
+chargesheet / remand order for `case_file`, court record for
+`court_record`, statute text for `statute`; `user_input` fields query the
+case file where such details surface, e.g. vakalatnama for counsel).
+`typically_found_in` is a closed vocabulary (`case_file`, `court_record`,
+`statute`, `judgment`, `user_input`) pinned by test.
 
 ## Bail application
 

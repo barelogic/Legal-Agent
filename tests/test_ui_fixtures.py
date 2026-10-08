@@ -90,3 +90,21 @@ def test_every_workflow_has_a_fixture():
     for wf, name in fx.WORKFLOW_FIXTURE.items():
         assert name in fx.FIXTURE_NAMES
         fx.load_answer(name)  # must not raise
+
+
+def _sample_rows() -> list:
+    import json
+    from pathlib import Path
+
+    p = Path(__file__).resolve().parent.parent / "ui" / "fixtures" / "compare_sample.jsonl"
+    return [json.loads(line) for line in p.read_text().splitlines() if line.strip()]
+
+
+def test_compare_sample_rows_valid_and_labelled():
+    rows = _sample_rows()
+    assert len(rows) >= 2
+    for r in rows:
+        assert "hand-built sample" in r["mode"]  # never mistaken for measured eval
+        assert r["question"] and r["baseline"]["text"]
+        assert r["baseline_unsupported"], r["qid"]  # the point of the screen
+        Answer(**r["ours"])  # must render in the ours column

@@ -21,6 +21,18 @@ def get_llm_judge_model() -> str:
     return os.getenv("LLM_JUDGE_MODEL", "").strip()
 
 
+def get_llm_temperature() -> float:
+    """Claim-extraction temperature (LLM_TEMPERATURE, default 0.0).
+
+    Structured-claim output must be deterministic: live-LLM answer/refuse
+    flakiness on thin-corpus topics traces to sampling, not grounding.
+    """
+    try:
+        return float(os.getenv("LLM_TEMPERATURE", "0.0"))
+    except ValueError:
+        return 0.0
+
+
 def get_top_k(default: int = 4) -> int:
     try:
         return int(os.getenv("TOP_K", str(default)))

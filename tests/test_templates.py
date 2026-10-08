@@ -41,6 +41,28 @@ def test_no_baked_clocks_or_identifiers():
     assert "Order XIX" not in blob, "procedural provisions are fill-in, not pre-filled"
 
 
+ALLOWED_SOURCES = {"case_file", "court_record", "statute", "judgment", "user_input"}
+
+
+def test_retrieval_query_per_required_field():
+    for name in ("bail_application.json", "legal_notice.json", "affidavit.json"):
+        t = _load(name)
+        for f in t["required_fields"]:
+            if not f.get("required"):
+                continue
+            q = f.get("retrieval_query", "")
+            assert isinstance(q, str) and len(q.split()) >= 3, \
+                f"{name}:{f['name']} needs a usable retrieval_query"
+
+
+def test_typically_found_in_closed_vocab():
+    for name in ("bail_application.json", "legal_notice.json", "affidavit.json"):
+        t = _load(name)
+        for f in t["required_fields"]:
+            assert f["typically_found_in"] in ALLOWED_SOURCES, \
+                f"{name}:{f['name']} has unknown source {f['typically_found_in']!r}"
+
+
 def test_sources_doc_exists():
     doc = ROOT / "docs" / "templates_sources.md"
     assert doc.is_file()

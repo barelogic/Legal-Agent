@@ -114,6 +114,14 @@ def _sidebar() -> tuple[dict, dict]:
         st.toggle("Offline demo (fixtures)", key="use_fixtures",
                   help="Serve bundled demo answers + chunks; no backend calls.")
 
+        if st.button("Reset session", key="reset-session", use_container_width=True,
+                     help="Clear all answers, questions, inputs and selections."):
+            for k in [k for k in st.session_state
+                      if k.startswith(("answers", "questions", "history", "q-", "pv-", "redrafted-"))
+                      or k in ("selected",)]:
+                st.session_state.pop(k, None)
+            st.rerun()
+
         if _fixtures_on():
             docs, _ = fx.load_registry()
             by_id = docs_by_id(docs)
@@ -184,7 +192,7 @@ def _sidebar() -> tuple[dict, dict]:
             st.session_state["case_set"] = []
             st.session_state["doc_types_filter"] = []
             st.rerun()
-        top_k = c2.number_input("top_k", 1, 10, 4, step=1)
+        top_k = st.number_input("top_k", 1, 10, 4, step=1)
         st.session_state["top_k"] = int(top_k)
 
     return by_id, {"docs": docs}
@@ -721,17 +729,23 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
 def _compare_tab(by_id: dict) -> None:
     import json
     from pathlib import Path
-    
+
     comp_file = Path("eval/results/compare.jsonl")
-    if not comp_file.exists():
+    sample_file = Path(__file__).resolve().parent / "fixtures" / "compare_sample.jsonl"
+    if comp_file.exists():
+        src, label = comp_file, "measured eval results (`eval/results/compare.jsonl`)"
+    elif sample_file.exists():
+        src, label = sample_file, "hand-built sample (`ui/fixtures/compare_sample.jsonl`) — illustrative, not measured"
+    else:
         st.info("No `eval/results/compare.jsonl` found. Run the eval suite to generate baseline comparisons.", icon="ℹ️")
         return
-        
+
     try:
-        rows = [json.loads(line) for line in comp_file.read_text("utf-8").splitlines() if line.strip()]
+        rows = [json.loads(line) for line in src.read_text("utf-8").splitlines() if line.strip()]
     except Exception as e:
         st.error(f"Failed to read compare file: {e}")
         return
+    st.caption(f"Source: {label}")
         
     if not rows:
         st.info("Compare file is empty.")
