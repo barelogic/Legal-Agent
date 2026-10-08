@@ -36,9 +36,38 @@ def test_doc_ids_restricts_corpus():
 
 
 def test_hybrid_single_token_gated():
-    # same refusal lever as the lexical registry: one shared token is noise
+    # same refusal lever as the lexical registry: one shared token of a
+    # multi-token query is noise
     assert _idx().retrieve("cheating frobnication") == []
     assert _idx().retrieve("cheating frobnication", min_overlap=1) != []
+
+
+def test_hybrid_single_term_query_matches():
+    # proportional gate: one-term query must match fully, so it retrieves
+    assert _idx().retrieve("bail") != []
+
+
+def test_hybrid_section_label_bypass_matches_store():
+    doc = Doc(doc_id="s1", title="S", doc_type="statute")
+    c = Chunk(
+        chunk_id="s1::p1::c0",
+        doc_id="s1",
+        text="totally unrelated wording here",
+        section_label="Section 483",
+    )
+    assert doc
+    idx = HybridIndex([c])
+    hits = idx.retrieve("what does Section 483 say")
+    assert [ch.chunk_id for ch, _ in hits] == ["s1::p1::c0"]
+
+
+def test_default_chunks_include_seeds():
+    # regression: hybrid index once dropped seeds when processed JSONL existed,
+    # so doc_ids-filtered seed queries refused. Seeds must always be present.
+    from retrieval.hybrid import _registry_chunks
+
+    ids = {c.doc_id for c in _registry_chunks()}
+    assert {"bnss_2023", "sc_bail_2022", "case_file_demo"} <= ids
 
 
 def test_gibberish_returns_empty():

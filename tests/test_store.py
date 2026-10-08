@@ -31,5 +31,11 @@ def test_single_token_overlap_refused_by_default():
     assert _one_token_reg().search("xyzzy quantum frobnication") == []
 
 
+def test_single_term_query_must_match_fully():
+    # genuine one-term query: required scales to 1, so it can retrieve;
+    # verifier downstream still decides truth — retrieval only proposes.
+    assert _one_token_reg().search("quantum") != []
+
+
 def test_single_token_overlap_allowed_when_relaxed():
     assert _one_token_reg().search("xyzzy quantum frobnication", min_overlap=1) != []

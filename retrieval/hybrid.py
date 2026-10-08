@@ -83,15 +83,22 @@ class HybridIndex:
     def _bm25_rank(
         self, query: str, pool_idx: list[int], min_overlap: int = 2
     ) -> list[str]:
-        """Lexical leg: rank by BM25, keep docs sharing >= min_overlap tokens.
+        """Lexical leg: rank by BM25, keep docs clearing the overlap gate.
 
-        Same refusal lever as retrieval/store.py. The dense leg is NOT gated
-        here: embeddings match paraphrases that share no tokens by design.
+        Gate is proportional: required = min(min_overlap, #distinct query
+        tokens), so a genuine single-term query must match fully while
+        multi-token noise sharing one term still refuses. Section-label
+        bypass mirrors retrieval/store.py. The dense leg is NOT gated:
+        embeddings match paraphrases that share no tokens by design.
         """
         if not pool_idx:
             return []
         qtok = _tokens(query)
-        if self._bm25 is None or not qtok:  # pure-python TF fallback
+        if not qtok:
+            return []
+        required = min(min_overlap, len(set(qtok)))
+        qlower = query.lower()
+        if self._bm25 is None:  # pure-python TF fallback
             from collections import Counter
 
             qcount = Counter(qtok)
@@ -99,9 +106,12 @@ class HybridIndex:
             for i in pool_idx:
                 cc = Counter(_tokens(self.chunks[i].text))
                 overlap = {t for t in qcount if t in cc}
-                if len(overlap) < min_overlap:
+                label = self.chunks[i].section_label
+                if len(overlap) < required and not (label and label.lower() in qlower):
                     continue
                 s = sum(min(qcount[t], cc[t]) for t in overlap)
+                if label and label.lower() in qlower:
+                    s += 3  # mirrors retrieval/store.py section bonus
                 if s > 0:
                     scored.append((s, self.chunks[i].chunk_id))
             scored.sort(key=lambda x: (-x[0], x[1]))
@@ -117,7 +127,11 @@ class HybridIndex:
         return [
             self.chunks[i].chunk_id
             for i in ranked
-            if len(qset & set(_tokens(self.chunks[i].text))) >= min_overlap
+            if len(qset & set(_tokens(self.chunks[i].text))) >= required
+            or (
+                self.chunks[i].section_label
+                and self.chunks[i].section_label.lower() in qlower
+            )
         ]
 
     # -- dense (optional, cached on disk) --------------------------------
@@ -234,16 +248,30 @@ class HybridIndex:
 _INDEX: HybridIndex | None = None
 
 
-def _default_chunks() -> list[Chunk]:
-    """chunks.jsonl when present, else the demo seed corpus (works offline)."""
-    from ingest.pipeline import load_chunks
+def _registry_chunks(base: Path | str | None = None) -> list[Chunk]:
+    """Seed + processed chunks, mirroring api/main.py:_registry (same upsert order).
+
+    _default_chunks used to return *only* processed JSONL when present, so the
+    hybrid index silently lacked seed docs (bnss_2023, sc_bail_2022,
+    case_file_demo) and any doc_ids-filtered query on them refused.
+    """
+    from ingest.pipeline import load_chunks, load_docs
     from ingest.seed import load_seeds
 
-    chunks = load_chunks()
-    if chunks:
-        return chunks
-    root = Path(__file__).resolve().parent.parent
-    return list(load_seeds(root / "data").chunks.values())
+    root = Path(base) if base is not None else Path(__file__).resolve().parent.parent
+    reg = load_seeds(root / "data")
+    for doc in load_docs(root):  # ingested files upsert over seeds on collision
+        reg.chunks = {cid: c for cid, c in reg.chunks.items() if c.doc_id != doc.doc_id}
+        reg.register_doc(doc)
+    for chunk in load_chunks(root):
+        if chunk.doc_id in reg.docs:
+            reg.chunks[chunk.chunk_id] = chunk
+    return list(reg.chunks.values())
+
+
+def _default_chunks() -> list[Chunk]:
+    """Seed + processed union (works offline: seeds alone when no JSONL)."""
+    return _registry_chunks()
 
 
 def get_index() -> HybridIndex:

@@ -37,6 +37,24 @@ Updated: 2026-10-08, at `bdaae51` (hybrid gate; main at `939d943`, pushed to ori
 - Live-corpus spot checks: `zxqv…` → 0 hits/refused, `xyzzy quantum…` → 0 hits,
   `bail in non-bailable offences?` → 4 hits/answered.
 
+## Corrections-file fixes (2026-10-08, on `core/phase-1`, merged to main)
+
+Report: `/home/frost/correctionsfile.md` (main @ `a49f55c`). Both core items fixed:
+
+- **Hybrid index dropped seeds**: `_default_chunks()` returned only processed
+  JSONL when present. New `_registry_chunks()` unions seeds + processed with
+  the exact upsert order of `api/main.py:_registry`; pinned by
+  `test_default_chunks_include_seeds`. Repro now passes on the live
+  1,485-chunk union: `doc_ids=["case_file_demo"]` → 1 hit, `["bnss_2023"]` → 1 hit.
+- **Single-token queries always refused**: gate is now proportional —
+  `required = min(min_overlap, #distinct query tokens)` in both `store.py`
+  and `hybrid.py`, plus section-label bypass parity in hybrid's TF leg
+  (incl. the +3 bonus mirror). `'bail'` → 4 hits/answered; multi-token noise
+  sharing one term (`xyzzy quantum frobnication`) → still refused. Verifier
+  still decides truth; retrieval only proposes. user2 note: single-token
+  traps, if any, will now score as answered — check against your intended
+  refusal P/R in `eval/metrics_grounded.py`.
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).
