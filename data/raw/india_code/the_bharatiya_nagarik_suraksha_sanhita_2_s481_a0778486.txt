@@ -1,0 +1,7 @@
+Source: https://indiacode.gov.in/handle/123456789/546668
+Act: The Bharatiya Nagarik Suraksha Sanhita, 2023
+Section: 481
+Title: Bail to require accused to appear before next Appellate Court.
+(Text below is the India Code section_page_note for this section.)
+
+(1) Before conclusion of the trial and before disposal of the appeal, the Court trying the offence or the Appellate Court, as the case may be, shall require the accused to execute a bond or bail bond, to appear before the higher Court as and when such Court issues notice in respect of any appeal or petition filed against the judgment of the respective Court and such bond shall be in force for six months. (2) If such accused fails to appear, the bond stand forfeited and the procedure under section 491 shall apply.

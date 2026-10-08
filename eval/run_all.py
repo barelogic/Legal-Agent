@@ -4,6 +4,8 @@
 
 Steps: corpus (seeds + HF sample) -> gold -> run 3 systems -> retrieval +
 groundedness + judge + ablations -> eval/results/metrics.json + tables.md.
+Plus: hand-built eval/queries.jsonl (40, incl. 10 traps, 10 holdout)
+resolved against data/processed/ and scored on the tunable split.
 Prints the tables to stdout. Deterministic offline (MockClient + fallback
 judge); live Gemini judge only when GEMINI_API_KEY is set (model logged).
 """
@@ -59,6 +61,18 @@ def main(argv: list[str] | None = None) -> int:
     ablations = run_ablations(rows, docs, chunks)
 
     try:
+        from eval.score_queries import load_processed_corpus, load_resolved, score_queries
+
+        import eval.build_queries as _bq
+
+        _bq.main([])
+        pdocs, pchunks = load_processed_corpus()
+        queries = score_queries(pdocs, pchunks, top_k=args.top_k)
+        queries["holdout_qids"] = [r["qid"] for r in load_resolved(holdout=True)]
+    except Exception as e:
+        queries = {"error": f"{e.__class__.__name__}: {e}"}
+
+    try:
         judge_model = judge.get("judge_model", "unknown")
     except AttributeError:
         judge_model = "unknown"
@@ -78,6 +92,7 @@ def main(argv: list[str] | None = None) -> int:
         "groundedness": grounded,
         "judge": judge,
         "ablations": ablations,
+        "queries": queries,
     }
     (out / "metrics.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     tables = render_tables(metrics)
@@ -122,6 +137,24 @@ def render_tables(m: dict) -> str:
                      f"fab={a['groundedness']['fabrication_rate']:.3f}")
         else:
             L.append(f"- {name}: {a}")
+    L.append("\n## Hand-built queries (tunable split; holdout excluded)")
+    q = m.get("queries", {})
+    if "error" in q:
+        L.append(f"queries section failed: {q['error']}")
+    else:
+        L.append(f"n={q['n']} ({q['n_answerable']} answerable), "
+                 f"holdout=[{', '.join(q.get('holdout_qids', []))}]")
+        L.append("| system | hit_rate | recall@k | verified | refusal_R | fabrication |")
+        L.append("|---|---|---|---|---|---|")
+        for s in ("full_lexical_verified", "baseline_no_verify", "hybrid_verified",
+                  "baseline_injected"):
+            r = q["retrieval"].get(s, {})
+            g = q["groundedness"].get(s, {})
+            L.append(f"| {s} | {r.get('hit_rate', float('nan')):.3f} | "
+                     f"{r.get('recall@k', float('nan')):.3f} | "
+                     f"{g.get('verified_rate', float('nan')):.3f} | "
+                     f"{g.get('refusal_recall', float('nan')):.3f} | "
+                     f"{g.get('fabrication_rate', float('nan')):.3f} |")
     return "\n".join(L)
 
 

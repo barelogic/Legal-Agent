@@ -1,0 +1,7 @@
+Source: https://indiacode.gov.in/handle/123456789/546156
+Act: The Bharatiya Nagarik Suraksha Sanhita, 2023
+Section: 47
+Title: Person arrested to be informed of grounds of arrest and of right to bail.
+(Text below is the India Code section_page_note for this section.)
+
+(1) Every police officer or other person arresting any person without warrant shall forthwith communicate to him full particulars of the offence for which he is arrested or other grounds for such arrest. (2) Where a police officer arrests without warrant any person other than a person accused of a nonbailable offence, he shall inform the person arrested that he is entitled to be released on bail and that he may arrange for sureties on his behalf.

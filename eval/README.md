@@ -36,6 +36,13 @@ no edits to `contracts/`, `api/`, `ingest/`, `retrieval/`, `verify/`,
   deltas (`delta_verifier_fabrication`, `delta_hybrid_recall`) are the
   research contribution.
 - `eval/tests/test_eval.py` — offline self-tests (seeds only).
+- `eval/queries.jsonl` — 40 hand-built bail-corpus queries (10 each
+  chat/review/research/draft; 10 traps with fake cases/missing law, 10
+  holdout nobody tunes against). Every answerable `answer_span` is
+  verified verbatim against `data/processed/` by `eval/build_queries.py`
+  (fails loudly otherwise); gold chunk ids resolve to
+  `eval/datasets/queries_resolved.jsonl`; `eval/score_queries.py` scores
+  the tunable split and feeds `run_all.py`'s queries table.
 
 ## Honest limits (for the write-up)
 
