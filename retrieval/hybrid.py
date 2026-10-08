@@ -20,6 +20,18 @@ _STOP = frozenset(
 RRF_K = 60
 
 
+def _rerank_gate_enabled() -> bool:
+    """VERIFY_RERANK env (default on). Off bypasses the reranker entirely.
+
+    Local helper (not workflows.flags) to avoid an import cycle:
+    workflows.flags imports this module for run().
+    """
+    raw = os.getenv("VERIFY_RERANK")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"0", "false", "no", "off", ""}
+
+
 def get_retrieval_backend() -> str:
     """lexical (default) or hybrid. Hybrid falls back to lexical when ML is absent."""
     return os.getenv("RETRIEVAL_BACKEND", "lexical").strip().lower() or "lexical"
@@ -222,6 +234,8 @@ class HybridIndex:
         if len(ranked) < 2:
             return ranked
         if min_score is None:
+            if not _rerank_gate_enabled():
+                return ranked
             from generation.config import get_rerank_min_score
 
             min_score = get_rerank_min_score()
@@ -245,6 +259,7 @@ class HybridIndex:
         doc_ids: list[str] | None = None,
         min_overlap: int = 2,
         min_coverage: float | None = None,
+        rerank_min_score: float | None = None,
     ) -> list[tuple[Chunk, float]]:
         """Fuse BM25 + dense via RRF, rerank, return [(Chunk, score)]."""
         allowed = set(doc_ids) if doc_ids else None
@@ -269,7 +284,9 @@ class HybridIndex:
         # adds +3 (mirroring store.py), so skip the fused +0.05 there.
         if not self._tf_fallback_used:
             fused = self._label_bonus(query, fused)
-        final = self._rerank(query, fused[: max(top_k * 3, top_k)])
+        final = self._rerank(
+            query, fused[: max(top_k * 3, top_k)], min_score=rerank_min_score
+        )
         return [(self.by_id[cid], score) for cid, score in final[:top_k]]
 
     def _label_bonus(
@@ -336,9 +353,11 @@ def retrieve(
     doc_ids: list[str] | None = None,
     min_overlap: int = 2,
     min_coverage: float | None = None,
+    rerank_min_score: float | None = None,
 ) -> list[tuple[Chunk, float]]:
-    """retrieve(query, top_k=8, doc_ids=None, min_overlap=2, min_coverage=None)."""
+    """retrieve(query, top_k=8, doc_ids=None, min_overlap=2, ...)."""
     return get_index().retrieve(
         query, top_k=top_k, doc_ids=doc_ids,
         min_overlap=min_overlap, min_coverage=min_coverage,
+        rerank_min_score=rerank_min_score,
     )

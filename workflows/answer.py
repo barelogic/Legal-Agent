@@ -48,14 +48,21 @@ def answer_question(
     registry: Registry,
     llm,
     top_k: int = 4,
+    min_coverage: float | None = None,
+    short_boost: bool = True,
+    flagset: dict[str, bool] | None = None,
 ) -> Answer:
     """Full grounded pipeline returning an Answer model."""
     t0 = time.perf_counter()
     effective_top_k = top_k
-    if len(set(_content_tokens(question))) <= SHORT_QUERY_TOKENS:
+    if short_boost and len(set(_content_tokens(question))) <= SHORT_QUERY_TOKENS:
         effective_top_k = max(top_k, SHORT_QUERY_TOP_K)
-    retrieved: list[Chunk] = registry.search(question, top_k=effective_top_k)
-    ans = answer_from_chunks(question, workflow, registry, llm, retrieved, t0=t0)
+    retrieved: list[Chunk] = registry.search(
+        question, top_k=effective_top_k, min_coverage=min_coverage
+    )
+    ans = answer_from_chunks(
+        question, workflow, registry, llm, retrieved, t0=t0, flagset=flagset
+    )
     ans.trace["top_k_effective"] = effective_top_k
     if effective_top_k != top_k:
         ans.trace["top_k_boost"] = (
@@ -71,11 +78,12 @@ def answer_from_chunks(
     llm,
     retrieved: list[Chunk],
     t0: float | None = None,
+    flagset: dict[str, bool] | None = None,
 ) -> Answer:
     """Grounded pipeline over pre-retrieved chunks (e.g. hybrid retrieval)."""
     t0 = t0 if t0 is not None else time.perf_counter()
     chunk_map = {c.chunk_id: c for c in retrieved}
-    flagset = vflags.all_flags()
+    flagset = flagset if flagset is not None else vflags.all_flags()
 
     judge_client, judge_note = None, None
     if flagset["entailment"]:
@@ -108,12 +116,15 @@ def answer_from_chunks(
 
     citations = build_citations(verified, chunk_map, registry.docs)
     ms = int((time.perf_counter() - t0) * 1000)
+    verify4 = {k: flagset.get(k, True) for k in (
+        "verify_text", "entailment", "citation_gate", "regenerate")}
     trace = {
         "retrieved_chunk_ids": [c.chunk_id for c in retrieved],
         "dropped": len(failed),
         "dropped_reasons": [f"{c.claim_id}: {c.verifier_note}" for c in failed],
         "fallbacks": fallbacks,
-        "verify_flags": flagset,
+        "flags": dict(flagset),
+        "verify_flags": verify4,
         "regenerated": regenerated,
         "latency_ms": ms,
     }

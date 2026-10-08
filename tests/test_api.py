@@ -54,12 +54,10 @@ def test_missing_key_is_503(monkeypatch):
 
 
 def test_hybrid_fallthrough_recorded(monkeypatch):
-    import api.main as m
-
     def _boom(*a, **k):
         raise RuntimeError("index gone")
 
-    monkeypatch.setattr(m, "retrieve", _boom)
+    monkeypatch.setattr("retrieval.hybrid.retrieve", _boom)
     r = client.post(
         "/answer",
         json={"question": "bail in non-bailable offences?", "doc_ids": ["bnss_2023"]},
