@@ -11,6 +11,8 @@ claims with quote + chunk link; refusals and missing-info stay prominent.
 
 from __future__ import annotations
 
+import inspect
+
 import streamlit as st
 
 from contracts.schemas import Answer
@@ -35,6 +37,26 @@ PRESETS: dict[str, str] = {
     "review": "FIR 0123/2024 — is recovery pending, did the accused join investigation?",
     "research": "What did Satender Kumar Antil v. CBI (2022) hold on arrest?",
 }
+
+
+def _fill_example(workflow: str) -> None:
+    """Streamlit click-callback: preset the question box.
+
+    Runs as an ``on_click`` callback (before the next script run), which is
+    the only legal moment to write a widget-backed ``session_state`` key —
+    writing it after the ``text_area`` is instantiated raises
+    ``StreamlitWidgetAlreadyInstantiatedError`` on repeat clicks.
+    """
+    st.session_state[f"q-{workflow}"] = PRESETS[workflow]
+
+
+# ``st.dataframe(width=...)`` replaced ``use_container_width`` in newer
+# Streamlit; resolve once so the app runs on both old and new versions.
+_DATAFRAME_KWARGS: dict = (
+    {"width": "stretch"}
+    if "width" in inspect.signature(st.dataframe).parameters
+    else {"use_container_width": True}
+)
 
 
 def _base() -> str:
@@ -118,9 +140,8 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
             st.session_state.pop("selected", None)
         except RuntimeError as e:
             st.error(str(e), icon="⛔")
-    if c2.button("Fill example", key=f"preset-{workflow}"):
-        st.session_state[f"q-{workflow}"] = PRESETS[workflow]
-        st.rerun()
+    c2.button("Fill example", key=f"preset-{workflow}",
+              on_click=_fill_example, args=(workflow,))
     saved = (st.session_state.get("answers") or {}).get(workflow)
     if saved:
         st.divider()
@@ -243,7 +264,7 @@ def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
             }
             for c in answer.claims
         ]
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+        st.dataframe(rows, hide_index=True, **_DATAFRAME_KWARGS)
         if answer.citations:
             st.subheader("Sources")
             for cite in answer.citations:
