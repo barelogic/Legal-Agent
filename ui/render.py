@@ -137,3 +137,32 @@ def highlight_quote(chunk_text: str, quote: str) -> str:
 def status_badge(status: str) -> str:
     """Badge label for a claim status; unknown statuses pass through."""
     return STATUS_BADGE.get(status, status)
+
+
+# Distinct visual lane for user-supplied values (question text, draft field
+# inputs, case-set choices). Amber/brown — never the green/blue used for
+# sourced facts — plus an explicit "user-provided" label so a judge can
+# never mistake typed input for a retrieved fact.
+USER_VALUE_CSS = (
+    "<style>"
+    ".user-provided { background: #fef3c7; color: #92400e;"
+    " border: 1px solid #f59e0b; border-radius: 6px;"
+    " padding: 2px 8px; font-size: 0.85em; }"
+    ".user-provided-tag { background: #92400e; color: #fff8e6;"
+    " border-radius: 4px; padding: 0 6px; margin-right: 6px;"
+    " font-size: 0.75em; font-weight: 600; }"
+    "</style>"
+)
+
+
+def user_value_html(value: str) -> str:
+    """Wrap a user-supplied value in a visually distinct badge.
+
+    HTML-escaped; always carries the ``user-provided`` label. Pure function
+    so tests pin the distinction without Streamlit.
+    """
+    return (
+        '<span class="user-provided"><span class="user-provided-tag">'
+        "user-provided</span>"
+        f"{html.escape(value)}</span>"
+    )

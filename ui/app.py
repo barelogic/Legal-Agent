@@ -18,6 +18,7 @@ import streamlit as st
 from contracts.schemas import Answer
 from ui import api_client
 from ui.render import (
+    USER_VALUE_CSS,
     citation_to_markdown,
     claim_markers,
     docs_by_id,
@@ -26,6 +27,7 @@ from ui.render import (
     source_label,
     split_text_markers,
     status_badge,
+    user_value_html,
     verified_claims,
 )
 
@@ -137,6 +139,7 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
                     base=_base(),
                 )
             st.session_state.setdefault("answers", {})[workflow] = ans.model_dump()
+            st.session_state.setdefault("questions", {})[workflow] = q
             st.session_state.pop("selected", None)
         except RuntimeError as e:
             st.error(str(e), icon="⛔")
@@ -145,6 +148,10 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
     saved = (st.session_state.get("answers") or {}).get(workflow)
     if saved:
         st.divider()
+        asked = (st.session_state.get("questions") or {}).get(workflow, "")
+        if asked:
+            st.markdown(user_value_html(asked), unsafe_allow_html=True)
+            st.caption("Above: your question — not a sourced fact.")
         _render_result(Answer(**saved), by_id, workflow)
 
 
@@ -219,7 +226,7 @@ def _render_source_panel(answer: Answer, by_id: dict, workflow: str) -> None:
                 st.markdown(f"> {claim.quote}")
                 st.caption(
                     "Full chunk fetch unavailable "
-                    f"(GET /sources/{chunk_id} not on mock backend) — "
+                    f"(GET /sources/{chunk_id} not on this backend) — "
                     "showing the verified quote instead."
                 )
         if st.button("Close panel", key=f"close-{workflow}"):
@@ -280,6 +287,7 @@ def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
 
 def main() -> None:
     st.set_page_config(page_title="Grounded Legal Assistant", layout="wide")
+    st.markdown(USER_VALUE_CSS, unsafe_allow_html=True)
     st.title("⚖️ Grounded Legal Assistant")
     st.caption(
         "Every fact links to its source chunk + verbatim quote. "

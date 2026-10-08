@@ -33,3 +33,5 @@ streamlit run ui/app.py
   never shown."
 - "No chunk + verbatim quote, no fact. Failures land in the dropped-claims
   audit, refusals stay prominent."
+- Legend: **amber `user-provided` badge = typed input, not a fact**;
+  claim text always ships with its verbatim quote + chunk link.

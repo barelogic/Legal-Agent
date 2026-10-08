@@ -12,6 +12,7 @@ from ui.render import (
     highlight_quote,
     split_text_markers,
     status_badge,
+    user_value_html,
     validate_claim_renderable,
     verified_claims,
 )
@@ -73,3 +74,13 @@ def test_highlight_quote_marks_span():
 def test_status_badge_known():
     assert "verified" in status_badge("verified")
     assert "unsupported" in status_badge("unsupported")
+
+
+def test_user_value_labelled_and_escaped():
+    out = user_value_html("<b>FIR 0123/2024</b>")
+    assert "user-provided" in out
+    assert "user-provided-tag" in out
+    assert "<b>" not in out  # escaped, never raw HTML
+    assert "FIR 0123/2024" in out
+    # distinct lane from sourced facts: amber class, no verified badge
+    assert "user-provided" in out and "✅ verified" not in out

@@ -78,8 +78,7 @@ def get_source(
 ) -> Chunk:
     """GET /sources/{chunk_id}; raises RuntimeError when unavailable.
 
-    The mock backend does not expose this route yet — callers must fall
-    back to the verified quote embedded in the Answer.
+    Callers must fall back to the verified quote embedded in the Answer.
     """
     try:
         r = httpx.get(f"{base.rstrip('/')}/sources/{chunk_id}", timeout=timeout)
