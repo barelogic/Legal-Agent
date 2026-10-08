@@ -16,6 +16,11 @@ def get_llm_model() -> str:
     return os.getenv("LLM_MODEL", "gemini-2.0-flash").strip() or "gemini-2.0-flash"
 
 
+def get_llm_judge_model() -> str:
+    """LLM_JUDGE_MODEL when set, else "" (judge picks unlike the generator)."""
+    return os.getenv("LLM_JUDGE_MODEL", "").strip()
+
+
 def get_gemini_key() -> str:
     return os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
 
