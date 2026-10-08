@@ -1,7 +1,31 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-09 — fetch round 2 landed on disk (~2GB); build queued behind ladder.
+Updated: 2026-10-09 — 20 traps live (overlap-logged); sweep + ladder running.
+
+## Trap expansion (this session, commit `f407933`)
+
+- `eval/trap_overlap.py` (new): per-trap max token overlap vs the corpus
+  with retrieval tokenization. Old 10 traps re-scored on the 81k-chunk
+  vocab: coverage 0.50–0.88, ALL above `MIN_COVERAGE` 0.32 (big corpus made
+  them more near-vocab — the required recompute).
+- 10 new near-vocab traps q041–q050 (4 holdout: q042/q044/q047/q050):
+  3 fake cases (Pawan Kumar Gupta 2021 default bail; Subramani SC-2023
+  witness protection; Chandan Kumar 2022 compensation), 3 absent-Act
+  sections (BNS s.500 / BNSS s.600 / BSA s.300 — past real section counts
+  358/531/170), 2 absent facts from FIR 0451/2024 (bank names; surety
+  furnishing date), 2 real-name-wrong-year/court (2019+2024INSC735;
+  Bombay+Rasid Ansari). Absence verified per trap (0 supporting chunks);
+  new-trap coverage 0.43–0.71. Resolved 50/50 (30 answerable).
+  `build_queries.py` asserts bumped (50 rows / 20 traps / 14 holdout;
+  workflows 13/12/13/12). `eval/tests/test_traps.py` (mock, instant).
+- `eval/sweep_gates.py` (new): MIN_COVERAGE {0–0.5} × rerank {bypass,
+  cutoff} on DEV only (holdout never touched) — answerable recall@k vs
+  trap empty-retrieval rate; knee by best trap-empty within 0.02 of max
+  recall. Recommends only; P1 defaults unchanged.
+- Corrections `user2` items: trap recompute + expansion DONE; sweep
+  running; served-vs-committed closes after the corpus rebuild (queued
+  behind the ladder so `latency_ms` stays clean).
 
 ## Fetch round 2 (this session — on disk, NOT yet built)
 
