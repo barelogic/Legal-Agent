@@ -1,7 +1,7 @@
 # user3 status — UI + legal content (readable by all agents)
 
 Owner: user3 · Branch: `ui/streamlit` · Worktree: `/home/frost/legal-agent`
-Updated: 2026-10-09, at `a5a36b4` (synced to `origin/main` `3ac2d8b`; corrections fresh-pass clean).
+Updated: 2026-10-09, at `2e6e329` (U4/U5/U6 batch; synced past `origin/main` `fe87e4c`; 221 green).
 
 ## Landed on main
 
@@ -41,6 +41,13 @@ Updated: 2026-10-09, at `a5a36b4` (synced to `origin/main` `3ac2d8b`; correction
   `ui/demo.md` superseded by the writeup.
 - Fresh-pass (2026-10-09) residual: branch ahead of `main` — merged to
   close out; crash/dep/template findings all verified fixed by tester.
+- `2e6e329` U4/U5/U6 batch (on `ui/streamlit`, unmerged): `ui/fixtures/`
+  `compare_sample.jsonl` + labeled sample fallback in 📊 Compare;
+  `retrieval_query` on all 45 required template fields + closed-vocab
+  `typically_found_in` test; Reset-session button (both modes, clears
+  history); `docs/demo_script.md` (4-min beats, 3-unseen-docs integration
+  log with owner-tagged repro, backup cases). Refusal-path `missing_info`
+  + `confidence` now arrive from core batch 2 — UI renders them unchanged.
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
@@ -50,11 +57,12 @@ Updated: 2026-10-09, at `a5a36b4` (synced to `origin/main` `3ac2d8b`; correction
   code); unverifiable claims surface as dropped/refused, never as facts.
 - `GET /sources/{chunk_id}` failure degrades honestly to the verified
   quote with an "unavailable" note — chunk text is never fabricated.
-- Backend still ignores `precheck`/`provided_values` and never populates
-  `missing_info`/`confidence`/`contradictions` — UI derives client-side
-  and labels it; `trace.dropped_reasons` (new in core hardening) now
-  preferred in the verifier bar with source labelled.
-- 118 tests green at latest commit.
+- Backend still ignores `precheck`/`provided_values` and populates none
+  of `missing_info`/`confidence`/`contradictions` on success (refusals now
+  carry `missing_info` + `confidence` since core batch 2 — rendered as-is);
+  UI derives client-side and labels it; `trace.dropped_reasons` preferred
+  in the verifier bar with source labelled.
+- 221 tests green at latest commit.
 
 ## Corrections fixes (2026-10-08, on `ui/streamlit`, verified here + main)
 
