@@ -60,3 +60,32 @@ def test_coverage_env_override(monkeypatch):
     reg.add_chunks(chunk_text(doc, "bail granted arrested person offence court trial"))
     q = "bail arrested person fictitious gibberish wololo furniture zebra quartz megablast"
     assert reg.search(q, min_overlap=1) != []
+def _mixed_reg() -> Registry:
+    from contracts.schemas import Chunk
+
+    reg = Registry()
+    reg.register_doc(Doc(doc_id="s1", title="S", doc_type="statute"))
+    reg.register_doc(Doc(doc_id="j1", title="J", doc_type="judgment"))
+    reg.add_chunks([Chunk(chunk_id="s1::p1::c0", doc_id="s1",
+                          text="bail in non-bailable offences is judicial discretion of the court")])
+    reg.add_chunks([Chunk(chunk_id="j1::p1::c0", doc_id="j1",
+                          text="CRL OP/16246/2007 of RAVI Vs SUB INSPECTOR. Court: Madras High Court. Disposition: BAIL GRANTED.")])
+    return reg
+
+
+def test_doc_routing_flags_judgment_queries():
+    from retrieval.store import doc_routing
+
+    assert doc_routing("in which cases was bail granted, and by which court") == "judgment"
+    assert doc_routing("bail in non-bailable offences") is None
+    assert doc_routing("cases") is None  # single signal: unrouted
+
+
+def test_judgment_query_prefers_judgment_chunks():
+    hits = _mixed_reg().search("in which cases was bail granted, and by which court", top_k=2)
+    assert hits and hits[0].doc_id == "j1"
+
+
+def test_statute_query_unaffected_by_routing():
+    hits = _mixed_reg().search("bail in non-bailable offences", top_k=2)
+    assert hits and hits[0].doc_id == "s1"

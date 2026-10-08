@@ -12,6 +12,12 @@ import re
 from pathlib import Path
 
 from contracts.schemas import Chunk
+from retrieval.store import doc_routing
+
+# RRF-fused scores are ~0.01-0.05 scale; the judgment boost must clear
+# statute-vs-judgment gaps without drowning the fused order. Same
+# routing rule as retrieval/store.py (single source of truth there).
+JUDGMENT_FUSED_BOOST = 0.10
 
 logger = logging.getLogger(__name__)
 
@@ -84,9 +90,14 @@ class HybridIndex:
         chunks: list[Chunk],
         persist_dir: Path | str | None = None,
         embed_model: str | None = None,
+        docs: dict | None = None,
     ) -> None:
         self.chunks: list[Chunk] = list(chunks)
         self.by_id: dict[str, Chunk] = {c.chunk_id: c for c in self.chunks}
+        # Optional doc registry for doc_type-aware routing boosts.
+        # None (e.g. eval harness builds index from chunks alone) means
+        # no routing boost — ranking identical to before.
+        self.docs: dict = docs or {}
         self.persist_dir = Path(persist_dir) if persist_dir else get_chroma_dir()
         self.embed_model = embed_model or get_embed_model()
         self._bm25 = self._build_bm25()
@@ -299,6 +310,17 @@ class HybridIndex:
             if cid in pool_ids
         ]
         fused = rrf([r for r in (bm25_rank, dense_rank) if r])
+        # Judgment routing (mirrors retrieval/store.py): one fused-level
+        # boost so BM25 and dense legs share it uniformly.
+        if doc_routing(query) == "judgment" and self.docs:
+            boosted = []
+            for cid, s in fused:
+                c = self.by_id[cid]
+                doc = self.docs.get(c.doc_id)
+                if doc is not None and doc.doc_type == "judgment":
+                    s += JUDGMENT_FUSED_BOOST
+                boosted.append((cid, s))
+            fused = sorted(boosted, key=lambda x: -x[1])
         # Section-label bonus, counted ONCE: the TF fallback leg already
         # adds +3 (mirroring store.py), so skip the fused +0.05 there.
         if not self._tf_fallback_used:
@@ -325,13 +347,8 @@ class HybridIndex:
 _INDEX: HybridIndex | None = None
 
 
-def _registry_chunks(base: Path | str | None = None) -> list[Chunk]:
-    """Seed + processed chunks, mirroring api/main.py:_registry (same upsert order).
-
-    _default_chunks used to return *only* processed JSONL when present, so the
-    hybrid index silently lacked seed docs (bnss_2023, sc_bail_2022,
-    case_file_demo) and any doc_ids-filtered query on them refused.
-    """
+def _registry(base: Path | str | None = None):
+    """Seed + processed registry (same upsert order as api/main.py:_registry)."""
     from ingest.pipeline import load_chunks, load_docs
     from ingest.seed import load_seeds
 
@@ -343,7 +360,22 @@ def _registry_chunks(base: Path | str | None = None) -> list[Chunk]:
     for chunk in load_chunks(root):
         if chunk.doc_id in reg.docs:
             reg.chunks[chunk.chunk_id] = chunk
-    return list(reg.chunks.values())
+    return reg
+
+
+def _registry_docs(base: Path | str | None = None) -> dict:
+    """Doc map for the same registry (powers doc_type routing boosts)."""
+    return dict(_registry(base).docs)
+
+
+def _registry_chunks(base: Path | str | None = None) -> list[Chunk]:
+    """Seed + processed chunks, mirroring api/main.py:_registry (same upsert order).
+
+    _default_chunks used to return *only* processed JSONL when present, so the
+    hybrid index silently lacked seed docs (bnss_2023, sc_bail_2022,
+    case_file_demo) and any doc_ids-filtered seed queries refused.
+    """
+    return list(_registry(base).chunks.values())
 
 
 def _default_chunks() -> list[Chunk]:
@@ -355,14 +387,14 @@ def get_index() -> HybridIndex:
     """Process-wide singleton (rebuilt after ingest via rebuild_index)."""
     global _INDEX
     if _INDEX is None:
-        _INDEX = HybridIndex(_default_chunks())
+        _INDEX = HybridIndex(_default_chunks(), docs=_registry_docs())
     return _INDEX
 
 
 def rebuild_index() -> HybridIndex:
     """Drop the cached index so new ingests are picked up."""
     global _INDEX
-    _INDEX = HybridIndex(_default_chunks())
+    _INDEX = HybridIndex(_default_chunks(), docs=_registry_docs())
     return _INDEX
 
 

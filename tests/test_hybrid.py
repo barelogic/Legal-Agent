@@ -234,3 +234,52 @@ def test_ensure_dense_ids_all_chunks(monkeypatch, tmp_path):
     assert idx._ensure_dense() is True
     assert seen_ids["got"] == [c.chunk_id for c in chunks]
     assert seen_ids["added"] == [c.chunk_id for c in chunks]
+def _routed_idx() -> HybridIndex:
+    docs = {
+        "s1": Doc(doc_id="s1", title="S", doc_type="statute"),
+        "j1": Doc(doc_id="j1", title="J", doc_type="judgment"),
+    }
+    chunks = [
+        Chunk(chunk_id="s1::p1::c0", doc_id="s1",
+              text="bail in non-bailable offences is judicial discretion of the court"),
+        Chunk(chunk_id="j1::p1::c0", doc_id="j1",
+              text="CRL OP/16246/2007 of RAVI Vs SUB INSPECTOR. Court: Madras High Court. Disposition: BAIL GRANTED."),
+    ]
+    return HybridIndex(chunks, docs=docs)
+
+
+def test_hybrid_judgment_routing():
+    hits = _routed_idx().retrieve(
+        "in which cases was bail granted, and by which court", top_k=2)
+    assert hits and hits[0][0].doc_id == "j1"
+
+
+def test_hybrid_no_docs_means_no_routing_boost():
+    chunks = [
+        Chunk(chunk_id="s1::p1::c0", doc_id="s1",
+              text="bail in non-bailable offences is judicial discretion of the court"),
+        Chunk(chunk_id="j1::p1::c0", doc_id="j1",
+              text="CRL OP/16246/2007 of RAVI Vs SUB INSPECTOR. Court: Madras High Court. Disposition: BAIL GRANTED."),
+    ]
+    plain = HybridIndex(chunks)  # no docs map: ranking identical to before
+    hits = plain.retrieve("in which cases was bail granted, and by which court", top_k=2)
+    assert hits  # boost absent, but nothing crashes and order is lexical
+
+
+def test_answer_trace_records_routing():
+    from generation.llm import MockClient
+    from retrieval.store import Registry
+    from workflows.answer import answer_question
+
+    reg = Registry()
+    reg.register_doc(Doc(doc_id="s1", title="S", doc_type="statute"))
+    reg.register_doc(Doc(doc_id="j1", title="J", doc_type="judgment"))
+    from contracts.schemas import Chunk as C
+    reg.add_chunks([C(chunk_id="s1::p1::c0", doc_id="s1", text="bail provision note")])
+    reg.add_chunks([C(chunk_id="j1::p1::c0", doc_id="j1", text="Court: Madras High Court. Disposition: BAIL GRANTED.")])
+    routed = answer_question(
+        "in which cases was bail granted, and by which court",
+        "chat", reg, MockClient(), top_k=4)
+    assert routed.trace["routing"] == "judgment"
+    plain = answer_question("bail provision note", "chat", reg, MockClient(), top_k=4)
+    assert plain.trace["routing"] is None
