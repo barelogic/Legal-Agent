@@ -7,10 +7,13 @@ raises and must be shown as dropped/refused, never as a fact.
 
 from __future__ import annotations
 
+import difflib
 import html
+import json
 import re
+from pathlib import Path
 
-from contracts.schemas import Answer, Citation, Claim, Doc
+from contracts.schemas import Answer, Citation, Claim, Contradiction, Doc
 
 MARKER_RE = re.compile(r"\[(c\d+)\]")
 
@@ -151,6 +154,11 @@ USER_VALUE_CSS = (
     ".user-provided-tag { background: #92400e; color: #fff8e6;"
     " border-radius: 4px; padding: 0 6px; margin-right: 6px;"
     " font-size: 0.75em; font-weight: 600; }"
+    ".sourced { text-decoration: underline dotted #16a34a 2px;"
+    " text-underline-offset: 3px; cursor: help; }"
+    ".missing-chip { background: #fee2e2; color: #991b1b;"
+    " border: 1px solid #ef4444; border-radius: 6px;"
+    " padding: 2px 8px; font-size: 0.85em; font-weight: 600; }"
     "</style>"
 )
 
@@ -166,3 +174,248 @@ def user_value_html(value: str) -> str:
         "user-provided</span>"
         f"{html.escape(value)}</span>"
     )
+
+
+def user_provided_chip(value: str) -> str:
+    """Inline ``[USER-PROVIDED: value]`` marker in the user-value style.
+
+    Used in draft views for values the user typed into the missing-info
+    panel. Never a sourced fact: the label says who provided it.
+    """
+    return (
+        '<span class="user-provided"><span class="user-provided-tag">'
+        "user-provided</span>"
+        f"[USER-PROVIDED: {html.escape(value)}]</span>"
+    )
+
+
+def missing_chip(field: str) -> str:
+    """Inline red ``[MISSING: field]`` placeholder for unsourced items."""
+    return f'<span class="missing-chip">[MISSING: {html.escape(field)}]</span>'
+
+
+# ---------------------------------------------------------------------------
+# Templates + precheck (pure; templates/*.json are UI-owned content)
+# ---------------------------------------------------------------------------
+
+TEMPLATE_IDS = ("bail_application", "legal_notice", "affidavit")
+
+
+def _templates_dir() -> Path:
+    return Path(__file__).resolve().parent.parent / "templates"
+
+
+def load_template(template_id: str) -> dict:
+    """Load one UI-owned template JSON; raises ValueError if unknown."""
+    if template_id not in TEMPLATE_IDS:
+        raise ValueError(f"unknown template {template_id!r}")
+    return json.loads((_templates_dir() / f"{template_id}.json").read_text(encoding="utf-8"))
+
+
+def required_fields(template: dict) -> list[dict]:
+    """Required field dicts of a template JSON (in file order)."""
+    return [f for f in template.get("required_fields", []) if f.get("required")]
+
+
+def _norm(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", name.lower())
+
+
+def _field_flagged(norm_name: str, missing: list) -> object | None:
+    """Return the MissingInfo entry flagging this template field, if any."""
+    for m in missing:
+        nm = _norm(m.field)
+        if not nm or not norm_name:
+            continue
+        if nm == norm_name or nm in norm_name or norm_name in nm:
+            return m
+    return None
+
+
+def precheck_summary(answer: Answer, template: dict) -> dict:
+    """Draft readiness derived client-side from an Answer + template.
+
+    ``sourced`` = required field the backend did NOT flag in
+    ``missing_info``. ``unconfirmed`` is True when the backend returned no
+    missing-info list at all — then nothing was flagged, so callers must
+    label the count as unconfirmed, never as proven.
+    """
+    fields = required_fields(template)
+    rows: list[dict] = []
+    for f in fields:
+        m = _field_flagged(_norm(f["name"]), answer.missing_info)
+        rows.append(
+            {
+                "name": f["name"],
+                "description": f.get("description", ""),
+                "status": "missing" if m is not None else "sourced",
+                "why_needed": m.why_needed if m is not None else "",
+                "searched_in": list(m.searched_in) if m is not None else [],
+            }
+        )
+    sourced_n = sum(1 for r in rows if r["status"] == "sourced")
+    return {
+        "template_id": template.get("template_id", ""),
+        "total": len(rows),
+        "sourced_n": sourced_n,
+        "missing_n": len(rows) - sourced_n,
+        "unconfirmed": not answer.missing_info,
+        "rows": rows,
+    }
+
+
+def confidence_text(answer: Answer) -> str:
+    """Honest one-line confidence readout (backend often sends None)."""
+    if answer.confidence is None:
+        return "confidence: not provided by backend"
+    return f"confidence: {answer.confidence:.2f}"
+
+
+# ---------------------------------------------------------------------------
+# Draft view (pure HTML; Streamlit chips stay as buttons in app.py)
+# ---------------------------------------------------------------------------
+
+def _claims_by_id(answer: Answer) -> dict[str, Claim]:
+    return {c.claim_id: c for c in answer.claims}
+
+
+def draft_html(answer: Answer) -> str:
+    """Render Answer.text as HTML: sourced runs underlined w/ quote tooltip.
+
+    Text preceding each ``[cN]`` marker is wrapped in
+    ``<span class="sourced" title="verbatim quote">`` — hover previews the
+    quote, and app.py adds a clickable chip button per marker. Runs with no
+    following marker, or markers with no renderable claim, stay plain:
+    never underlined without a quote to show.
+    """
+    by_id = _claims_by_id(answer)
+    out: list[str] = []
+    buf = ""
+
+    def flush(marker_cid: str | None) -> None:
+        nonlocal buf
+        if not buf:
+            return
+        claim = by_id.get(marker_cid) if marker_cid else None
+        quote = claim.quote if claim is not None else ""
+        try:
+            if claim is not None:
+                validate_claim_renderable(claim)
+            else:
+                raise ValueError("no claim")
+            out.append(
+                f'<span class="sourced" title="{html.escape(quote)}">'
+                f"{html.escape(buf)}</span>"
+            )
+        except ValueError:
+            out.append(html.escape(buf))
+        buf = ""
+
+    for seg, cid in split_text_markers(answer.text):
+        if cid is None:
+            buf += seg
+        else:
+            flush(cid)
+            out.append(f" <strong>[{cid}]</strong>")
+    flush(None)
+    return "".join(out)
+
+
+def still_needed_html(answer: Answer, provided_values: dict[str, str]) -> str:
+    """Red ``[MISSING: field]`` placeholders / amber user values, as HTML.
+
+    One entry per ``missing_info`` item: a red placeholder when the user
+    has not supplied the field, an amber ``[USER-PROVIDED: …]`` chip when
+    they have. Empty string when the backend flagged nothing.
+    """
+    bits: list[str] = []
+    for m in answer.missing_info:
+        val = (provided_values or {}).get(m.field, "").strip()
+        if val:
+            bits.append(f"{missing_chip(m.field)} → {user_provided_chip(val)}")
+        else:
+            bits.append(missing_chip(m.field))
+    return "<br>".join(bits)
+
+
+# ---------------------------------------------------------------------------
+# Verifier summary bar (trace-first, claims fallback — labelled either way)
+# ---------------------------------------------------------------------------
+
+def verifier_summary(answer: Answer) -> dict:
+    """Verifier numbers for the summary bar, with provenance labels.
+
+    ``dropped_n`` prefers ``trace["dropped"]`` (backend count) and falls
+    back to the client-side dropped-claims count. ``dropped_reasons`` always
+    come from claim ``status`` + ``verifier_note`` — the backend trace
+    carries no per-claim reasons, and the label says so.
+    """
+    good = verified_claims(answer)
+    bad = dropped_claims(answer)
+    traced = answer.trace.get("dropped") if isinstance(answer.trace, dict) else None
+    if isinstance(traced, int) and traced >= 0:
+        dropped_n, source = traced, "trace"
+    else:
+        dropped_n, source = len(bad), "claims"
+    reasons = [
+        f"`{c.claim_id}` [{c.status}]"
+        + (f" — {c.verifier_note}" if c.verifier_note else "")
+        for c in bad
+    ]
+    return {
+        "verified_n": len(good),
+        "dropped_n": dropped_n,
+        "dropped_source": source,
+        "dropped_reasons": reasons,
+        "reasons_source": "claim status/verifier notes (trace has no per-claim reasons)",
+        "confidence": answer.confidence,
+    }
+
+
+def verifier_bar_html(summary: dict) -> str:
+    """One-line HTML summary bar from :func:`verifier_summary`."""
+    conf = (
+        f"{summary['confidence']:.2f}"
+        if summary["confidence"] is not None
+        else "not provided"
+    )
+    return (
+        f"✅ <strong>{summary['verified_n']}</strong> verified &nbsp;·&nbsp; "
+        f"⛔ <strong>{summary['dropped_n']}</strong> dropped "
+        f"(counted from {summary['dropped_source']}) &nbsp;·&nbsp; "
+        f"confidence: <strong>{conf}</strong>"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Contradiction side-by-side (word diff; fetch stays in app.py for honesty)
+# ---------------------------------------------------------------------------
+
+def diff_sides(a: str, b: str) -> tuple[str, str]:
+    """Word-level diff of two chunk texts; differing tokens get <mark>."""
+    ta, tb = a.split(), b.split()
+    sm = difflib.SequenceMatcher(None, ta, tb, autojunk=False)
+    ha, hb = [], []
+    for op, i1, i2, j1, j2 in sm.get_opcodes():
+        if op == "equal":
+            ha.extend(html.escape(t) for t in ta[i1:i2])
+            hb.extend(html.escape(t) for t in tb[j1:j2])
+        else:
+            ha.extend(f"<mark>{html.escape(t)}</mark>" for t in ta[i1:i2])
+            hb.extend(f"<mark>{html.escape(t)}</mark>" for t in tb[j1:j2])
+    return " ".join(ha), " ".join(hb)
+
+
+def contradiction_view_model(contra: Contradiction, fetched: dict[str, object | None]) -> dict:
+    """View model for one contradiction: texts (or None when unfetched).
+
+    ``fetched`` maps chunk_id → Chunk-like (``.text``) or None on failure.
+    Pure: app.py does the ``/sources`` fetching, this decides what to show.
+    """
+    return {
+        "description": contra.description,
+        "chunk_a": contra.claim_a,
+        "chunk_b": contra.claim_b,
+        "text_a": getattr(fetched.get(contra.claim_a), "text", None),
+        "text_b": getattr(fetched.get(contra.claim_b), "text", None),
+    }

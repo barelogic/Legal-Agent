@@ -48,15 +48,26 @@ def post_answer(
     workflow: Workflow = "chat",
     top_k: int | None = None,
     doc_ids: list[str] | None = None,
+    precheck: bool = False,
+    provided_values: dict[str, str] | None = None,
     base: str = DEFAULT_BASE_URL,
     timeout: float = 60.0,
 ) -> Answer:
-    """POST /answer and parse the body as an ``Answer`` model."""
+    """POST /answer and parse the body as an ``Answer`` model.
+
+    ``precheck`` / ``provided_values`` are forward-compatible draft keys:
+    sent when set, but the current backend ignores unknown fields, so the
+    UI derives precheck displays client-side from the returned Answer.
+    """
     payload: dict = {"question": question, "workflow": workflow}
     if top_k is not None:
         payload["top_k"] = top_k
     if doc_ids:
         payload["doc_ids"] = doc_ids
+    if precheck:
+        payload["precheck"] = True
+    if provided_values:
+        payload["provided_values"] = provided_values
     try:
         r = httpx.post(f"{base.rstrip('/')}/answer", json=payload, timeout=timeout)
         r.raise_for_status()

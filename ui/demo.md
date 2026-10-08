@@ -24,7 +24,14 @@ streamlit run ui/app.py
    investigation, no recovery pending).
 4. **"Refusal demo (off-corpus)"** → big red `Not found in the provided
    sources` banner + reason. This is the honesty proof.
-5. (If time) Sidebar → upload a `.txt` (`case_file`), re-ask — new doc
+5. **Draft tab**: pick a template → **Run precheck** → "N of M required
+   fields sourced" + confidence + missing list. Type values into the
+   missing-info boxes → **Draft with provided values**: sourced sentences
+   underlined (hover = verbatim quote), red `[MISSING: …]` placeholders,
+   amber `[USER-PROVIDED: …]` chips. Verifier bar (`N verified ·
+   M dropped · confidence`) sits above every result; contradictions render
+   side-by-side with differing words highlighted.
+6. (If time) Sidebar → upload a `.txt` (`case_file`), re-ask — new doc
    appears in corpus list and answers cite it.
 
 ## What to say
