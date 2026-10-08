@@ -5,13 +5,16 @@ like the frozen schema, including backend-empty fallbacks (no missing_info,
 no trace keys, confidence None, failed chunk fetch).
 """
 
-from contracts.schemas import Answer
+from contracts.schemas import Answer, Doc
 from ui.render import (
     TEMPLATE_IDS,
     confidence_text,
     contradiction_view_model,
     diff_sides,
+    docs_by_id,
     draft_html,
+    draft_segments,
+    export_draft_docx,
     load_template,
     missing_chip,
     precheck_summary,
@@ -205,3 +208,58 @@ def test_contradiction_view_model_fetch_and_failure():
     vm_fail = contradiction_view_model(contra, {contra.claim_a: None, contra.claim_b: None})
     assert vm_fail["text_a"] is None and vm_fail["text_b"] is None
     assert vm_fail["description"] == "custody length differs"
+
+
+# --- DOCX export -----------------------------------------------------------
+
+def _docs() -> dict:
+    return docs_by_id([
+        Doc(doc_id="bnss_2023", title="BNSS excerpt", doc_type="statute",
+            citation="BNSS, 2023"),
+        Doc(doc_id="case_file_demo", title="Demo case file", doc_type="case_file"),
+    ])
+
+
+def test_draft_segments_kinds():
+    segs = draft_segments(_answer(), {"FIR number": "0123/2024"})
+    kinds = [k for para in segs["body"] for _, k in para]
+    assert "marker" in kinds and "text" in kinds
+    assert any(t == "[c1]" for para in segs["body"] for t, k in para if k == "marker")
+    still_kinds = [[k for _, k in para] for para in segs["still_needed"]]
+    assert still_kinds[0] == ["missing", "text", "user"]
+    assert still_kinds[1] == ["missing"]
+
+
+def _docx_texts(blob: bytes) -> tuple[list[str], list[str]]:
+    from docx import Document
+    from io import BytesIO
+
+    doc = Document(BytesIO(blob))
+    paras = [p.text for p in doc.paragraphs]
+    heads = [p.text for p in doc.paragraphs if p.style.name.startswith("Heading")]
+    return paras, heads
+
+
+def test_export_docx_screen_parity_no_extra_text():
+    blob = export_draft_docx(_answer(), "Draft a bail prayer?", {"FIR number": "0123/2024"}, _docs())
+    paras, heads = _docx_texts(blob)
+    assert heads == ["Draft", "Still needed", "Sources"]
+    body = "\n".join(paras)
+    for needle in ("Draft a bail prayer?", "[c1]", "[MISSING: FIR number]",
+                   "[USER-PROVIDED: 0123/2024]", "[MISSING: bail provision]",
+                   "bnss_2023::p1::c1", "BNSS excerpt", "BNSS, 2023",
+                   "judicial discretion"):
+        assert needle in body, needle
+    for banned in ("Precheck", "confidence", "Trace", "latency", "retrieved_chunk_ids"):
+        assert banned not in body, banned
+
+
+def test_export_docx_flags_unrenderable_claim():
+    ans = _answer(claims=[{
+        "claim_id": "c9", "text": "Unsourced assertion.",
+        "chunk_ids": [], "quote": "", "status": "unsupported",
+    }])
+    _, heads = _docx_texts(export_draft_docx(ans, "", {}, _docs()))
+    assert heads == ["Draft", "Still needed", "Sources"]
+    paras, _ = _docx_texts(export_draft_docx(ans, "", {}, _docs()))
+    assert any("no verified quote" in p for p in paras)

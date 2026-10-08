@@ -388,6 +388,117 @@ def verifier_bar_html(summary: dict) -> str:
 
 
 # ---------------------------------------------------------------------------
+# DOCX export (screen parity: draft + still-needed + sources appendix)
+# ---------------------------------------------------------------------------
+
+def draft_segments(answer: Answer, provided_values: dict[str, str]) -> dict:
+    """Segment the draft body for screen-parity rendering.
+
+    Returns ``{"body": [...], "still_needed": [...]}`` where each paragraph
+    is a list of ``(text, kind)`` tuples, kind in
+    ``text | marker | missing | user``. The HTML draft view and the DOCX
+    export both consume this, so the export contains exactly what the
+    screen shows — no extra text.
+    """
+    body: list[list[tuple[str, str]]] = []
+    for line in answer.text.splitlines():
+        if not line.strip():
+            continue
+        para: list[tuple[str, str]] = []
+        for seg, cid in split_text_markers(line):
+            if cid is None:
+                if seg:
+                    para.append((seg, "text"))
+            else:
+                para.append((f"[{cid}]", "marker"))
+        if para:
+            body.append(para)
+    still: list[list[tuple[str, str]]] = []
+    for m in answer.missing_info:
+        val = (provided_values or {}).get(m.field, "").strip()
+        if val:
+            still.append([
+                (f"[MISSING: {m.field}]", "missing"),
+                (" → ", "text"),
+                (f"[USER-PROVIDED: {val}]", "user"),
+            ])
+        else:
+            still.append([(f"[MISSING: {m.field}]", "missing")])
+    return {"body": body, "still_needed": still}
+
+
+def export_draft_docx(
+    answer: Answer,
+    question: str,
+    provided_values: dict[str, str],
+    docs: dict[str, Doc],
+) -> bytes:
+    """Build the draft DOCX: question, draft, still-needed, Sources appendix.
+
+    Sourced sentences carry literal ``[cN]`` markers; placeholders are
+    highlighted (red = missing, yellow = user-provided). The appendix lists
+    every claim with status, and per chunk: chunk_id, Doc title, citation,
+    verbatim quote. Lazy ``python-docx`` import: raises RuntimeError with
+    an install hint when the optional dep is absent.
+    """
+    try:
+        from docx import Document
+        from docx.enum.text import WD_COLOR_INDEX
+    except ImportError as e:
+        raise RuntimeError(
+            "python-docx is not installed (pip install -r ui/requirements.txt)"
+        ) from e
+
+    doc = Document()
+    doc.add_heading("Draft", level=1)
+    if question:
+        p = doc.add_paragraph()
+        p.add_run("Question (user-provided): ").italic = True
+        p.add_run(question)
+
+    segs = draft_segments(answer, provided_values)
+    for para in segs["body"]:
+        p = doc.add_paragraph()
+        for text, kind in para:
+            run = p.add_run(text)
+            if kind == "marker":
+                run.bold = True
+
+    if segs["still_needed"]:
+        doc.add_heading("Still needed", level=1)
+        for para in segs["still_needed"]:
+            p = doc.add_paragraph()
+            for text, kind in para:
+                run = p.add_run(text)
+                run.bold = True
+                if kind == "missing":
+                    run.font.highlight_color = WD_COLOR_INDEX.RED
+                elif kind == "user":
+                    run.font.highlight_color = WD_COLOR_INDEX.YELLOW
+
+    doc.add_heading("Sources", level=1)
+    for c in answer.claims:
+        p = doc.add_paragraph()
+        p.add_run(f"[{c.claim_id}] {status_badge(c.status)}").bold = True
+        p.add_run(f" {c.text}")
+        if not c.chunk_ids or not c.quote.strip():
+            doc.add_paragraph("(no verified quote — not a sourced fact)").italic = True
+            continue
+        for cid in c.chunk_ids:
+            d = docs.get(doc_id_of_chunk(cid))
+            title = d.title if d else "(unregistered doc)"
+            cite = f" ({d.citation})" if d and d.citation else ""
+            doc.add_paragraph(f"{cid} — {title}{cite}")
+            doc.add_paragraph(f"\u201c{c.quote}\u201d")
+
+    from io import BytesIO
+
+    buf = BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
+# ---------------------------------------------------------------------------
 # Contradiction side-by-side (word diff; fetch stays in app.py for honesty)
 # ---------------------------------------------------------------------------
 

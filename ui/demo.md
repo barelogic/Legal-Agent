@@ -30,7 +30,8 @@ streamlit run ui/app.py
    underlined (hover = verbatim quote), red `[MISSING: …]` placeholders,
    amber `[USER-PROVIDED: …]` chips. Verifier bar (`N verified ·
    M dropped · confidence`) sits above every result; contradictions render
-   side-by-side with differing words highlighted.
+   side-by-side with differing words highlighted. **Export DOCX** downloads
+   exactly this screen (draft + still-needed + Sources appendix) — no extra text.
 6. (If time) Sidebar → upload a `.txt` (`case_file`), re-ask — new doc
    appears in corpus list and answers cite it.
 

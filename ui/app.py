@@ -28,6 +28,7 @@ from ui.render import (
     docs_by_id,
     draft_html,
     dropped_claims,
+    export_draft_docx,
     highlight_quote,
     load_template,
     precheck_summary,
@@ -317,7 +318,9 @@ def _render_missing_panel(answer: Answer, workflow: str) -> dict[str, str]:
     }
 
 
-def _render_draft_view(answer: Answer, workflow: str, provided: dict[str, str]) -> None:
+def _render_draft_view(
+    answer: Answer, by_id: dict, workflow: str, provided: dict[str, str]
+) -> None:
     """Draft: underlined sourced sentences + chips, placeholders, user vals."""
     st.subheader("Draft")
     st.markdown(draft_html(answer), unsafe_allow_html=True)
@@ -333,6 +336,25 @@ def _render_draft_view(answer: Answer, workflow: str, provided: dict[str, str]) 
         st.markdown("**Still needed:**")
         st.markdown(need, unsafe_allow_html=True)
         st.caption("Red = unsourced placeholder · amber = your input, not a fact.")
+    try:
+        blob = export_draft_docx(
+            answer,
+            (st.session_state.get("questions") or {}).get(workflow, ""),
+            provided,
+            by_id,
+        )
+    except RuntimeError as e:
+        st.error(str(e))
+        return
+    template_id = st.session_state.get("template-draft", TEMPLATE_IDS[0])
+    st.download_button(
+        "Export DOCX",
+        data=blob,
+        file_name=f"{template_id}_draft.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        key=f"export-{workflow}",
+    )
+    st.caption("Export mirrors this screen: draft, still-needed, Sources appendix.")
 
 
 def _render_verifier_bar(answer: Answer) -> None:
@@ -421,7 +443,7 @@ def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
                     st.rerun()
                 except RuntimeError as e:
                     st.error(str(e), icon="⛔")
-        _render_draft_view(answer, workflow, provided)
+        _render_draft_view(answer, by_id, workflow, provided)
 
     left, right = st.columns([3, 2])
     with left:
