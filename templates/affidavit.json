@@ -2,7 +2,7 @@
   "template_id": "affidavit",
   "title": "Affidavit (general court affidavit)",
   "jurisdiction": "India",
-  "description": "Sworn statement of facts filed under Order XIX CPC (and Supreme Court Rules where applicable). States facts only, never legal argument.",
+  "description": "Sworn statement of facts filed as an affidavit in court proceedings (identify the governing procedural provision from sources at filing time; do not assume). States facts only, never legal argument.",
   "required_fields": [
     {"name": "court", "field_type": "string", "required": true, "typically_found_in": "court_record", "description": "Court name exactly as in the main proceeding."},
     {"name": "case_number", "field_type": "string", "required": true, "typically_found_in": "court_record", "description": "Case number exactly as in the main proceeding."},

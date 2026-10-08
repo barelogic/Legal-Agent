@@ -15,6 +15,8 @@ import inspect
 
 import streamlit as st
 
+from pydantic import ValidationError
+
 from contracts.schemas import Answer
 from ui import api_client
 from ui import fixtures as fx
@@ -129,7 +131,14 @@ def _sidebar() -> tuple[dict, dict]:
                 for f in ups or []:
                     try:
                         res = api_client.post_ingest(f.name, f.getvalue(), dtype, base=base)
-                        ok += 1
+                        if not isinstance(res, dict) or "doc" not in res or "num_chunks" not in res:
+                            fail.append(f"{f.name}: bad ingest response (missing doc/num_chunks)")
+                        else:
+                            st.sidebar.caption(
+                                f"ingested `{res['doc'].get('doc_id', f.name)}` "
+                                f"({res['num_chunks']} chunks)"
+                            )
+                            ok += 1
                     except RuntimeError as e:
                         fail.append(f"{f.name}: {e}")
             if ok:
@@ -186,7 +195,8 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
             st.session_state.setdefault("answers", {})[workflow] = ans.model_dump()
             st.session_state.setdefault("questions", {})[workflow] = q
             st.session_state.pop("selected", None)
-        except RuntimeError as e:
+            st.session_state.pop(f"redrafted-{workflow}", None)
+        except (RuntimeError, ValueError, OSError) as e:
             st.error(str(e), icon="⛔")
     if workflow == "draft":
         if c1.button("Run precheck", key="precheck-draft"):
@@ -211,7 +221,8 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
                     st.session_state.setdefault("answers", {})["draft"] = ans.model_dump()
                     st.session_state.setdefault("questions", {})["draft"] = q
                     st.session_state.pop("selected", None)
-                except RuntimeError as e:
+                    st.session_state.pop("redrafted-draft", None)
+                except (RuntimeError, ValueError, OSError) as e:
                     st.error(str(e), icon="⛔")
     c2.button("Fill example", key=f"preset-{workflow}",
               on_click=_fill_example, args=(workflow,))
@@ -222,7 +233,13 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
         if asked:
             st.markdown(user_value_html(asked), unsafe_allow_html=True)
             st.caption("Above: your question — not a sourced fact.")
-        _render_result(Answer(**saved), by_id, workflow)
+        try:
+            _render_result(Answer(**saved), by_id, workflow)
+        except ValidationError as e:
+            st.error(f"Saved answer failed validation and was not rendered: {e}", icon="⛔")
+            if st.button("Discard saved answer", key=f"discard-{workflow}"):
+                st.session_state.get("answers", {}).pop(workflow, None)
+                st.rerun()
 
 
 def _render_claim_text_with_chips(answer: Answer, workflow: str) -> None:
@@ -382,8 +399,8 @@ def _render_draft_view(
             provided,
             by_id,
         )
-    except RuntimeError as e:
-        st.error(str(e))
+    except Exception as e:
+        st.error(f"DOCX export failed: {e} (pip install -r ui/requirements.txt)")
         return
     template_id = st.session_state.get("template-draft", TEMPLATE_IDS[0])
     st.download_button(
@@ -482,9 +499,16 @@ def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
                         )
                     st.session_state.setdefault("answers", {})[workflow] = ans.model_dump()
                     st.session_state.pop("selected", None)
+                    st.session_state[f"redrafted-{workflow}"] = True
                     st.rerun()
-                except RuntimeError as e:
+                except (RuntimeError, ValueError, OSError) as e:
                     st.error(str(e), icon="⛔")
+        if st.session_state.get(f"redrafted-{workflow}") and not _fixtures_on():
+            st.caption(
+                "⚠️ This backend's `AskIn` has no `precheck`/`provided_values` "
+                "fields — the values were sent but ignored, so sourcing is "
+                "unchanged. Echoed below as your input, not facts."
+            )
         _render_draft_view(answer, by_id, workflow, provided)
 
     left, right = st.columns([3, 2])

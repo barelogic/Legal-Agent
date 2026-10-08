@@ -16,10 +16,10 @@
     {"name": "signatory", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Signature of sender/advocate with enrolment details where applicable; retain a signed copy and dispatch proof."}
   ],
   "conditional_fields": [
-    {"name": "s80_authority", "field_type": "address", "required": false, "typically_found_in": "user_input", "description": "For suits against government/public officer: authority sued. Suit only after 2 months from service; plaint must state notice was delivered."},
+    {"name": "s80_authority", "field_type": "address", "required": false, "typically_found_in": "user_input", "description": "For suits against government/public officer: authority sued. Suit only after the statutory waiting period from service (fill period from sources; do not assume); plaint must state notice was delivered."},
     {"name": "s138_cheque_no", "field_type": "string", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: cheque number and date."},
     {"name": "s138_amount", "field_type": "amount", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: cheque amount."},
-    {"name": "s138_return_memo_date", "field_type": "date", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: bank return-memo date. Notice must be sent within 30 days of it."},
+    {"name": "s138_return_memo_date", "field_type": "date", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: bank return-memo date. Notice must be sent within the statutory window running from it (fill from sources; do not assume)."},
     {"name": "s138_pay_window_days", "field_type": "integer", "required": false, "typically_found_in": "statute", "description": "Drawer payment window after notice receipt (statutory; fill from sources, do not assume)."},
     {"name": "tenant_premises", "field_type": "address", "required": false, "typically_found_in": "case_file", "description": "For eviction: premises address with lease date, rent and ground (expiry/arrears/breach)."},
     {"name": "consumer_invoice", "field_type": "string", "required": false, "typically_found_in": "case_file", "description": "For consumer deficiency: invoice number, date, amount and defect description."}

@@ -32,6 +32,15 @@ def test_no_invented_section_numbers():
     assert not SECTION_NO.search(blob), "templates must not hardcode statutory section numbers"
 
 
+def test_no_baked_clocks_or_identifiers():
+    """Periods and provision identifiers stay fill-in fields, not template text."""
+    blob = "\n".join((TMPL / n).read_text(encoding="utf-8") for n in (
+        "bail_application.json", "legal_notice.json", "affidavit.json"))
+    assert not re.search(r"\b\d+\s*(days?|months?|years?|hours?)\b", blob), \
+        "templates must not bake statutory clocks (fill from sources)"
+    assert "Order XIX" not in blob, "procedural provisions are fill-in, not pre-filled"
+
+
 def test_sources_doc_exists():
     doc = ROOT / "docs" / "templates_sources.md"
     assert doc.is_file()

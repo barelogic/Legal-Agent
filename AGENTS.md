@@ -9,7 +9,7 @@ be traceable to a retrieved source. A single fabricated fact fails us.
 | --- | --- | --- | --- |
 | Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `core/phase-1` | `/home/frost/legal-agent-core` |
 | user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `eval/data-eval` | `/home/frost/legal-agent-eval` |
-| user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` | `/home/frost/legal-agent` (main tree) |
+| user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` | `/home/frost/legal-agent` (ui/streamlit checkout) |
 
 All commits share one git username, so **branches — not authors — separate work**.
 `main` takes merges, not direct feature work.

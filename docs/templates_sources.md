@@ -30,8 +30,11 @@ retrieved documents at answer time.
   and templates" (https://blog.ipleaders.in/legal-notice-2, verified
   25.06.2026): 8-component anatomy (date/letterhead, parties, subject,
   facts, legal grounds, demand, compliance period, signature + retained
-  copy); Section 80 CPC 2-month rule and Section 138 NI 30-day notice /
-  15-day pay / 30-day complaint clocks; RPAD + email/WhatsApp service
+  copy); the source states a 2-month rule for Section 80 CPC suits and
+  30/15/30-day clocks for Section 138 NI (notice / pay / complaint) —
+  reported here as source claims, not template content. Templates record
+  only that a statutory clock applies and leave every period as a
+  fill-from-sources field. RPAD + email/WhatsApp service
   practice. Used for `boilerplate_structure`, `conditional_fields`,
   `notes`.
 - Section 80 CPC requisites note (Uttarkashi judiciary PDF via

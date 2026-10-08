@@ -4,14 +4,14 @@ Backend first (terminal 1):
 
 ```bash
 source .venv/bin/activate.fish  # or: source .venv/bin/activate
-python -m uvicorn api.main:app
+python -m uvicorn api.main:app --reload
 ```
 
 UI (terminal 2):
 
 ```bash
 source .venv/bin/activate.fish
-python -m pip install -r ui/requirements.txt
+python -m pip install -r requirements.txt -r ui/requirements.txt
 streamlit run ui/app.py
 ```
 
@@ -38,9 +38,9 @@ streamlit run ui/app.py
 ## Offline fallback (no backend / no LLM key)
 
 Sidebar → **Use fixtures**: every tab serves bundled `ui/fixtures/*.json`
-(a precheck with missing_info, a draft with a placeholder + a prefilled
-user value, a review with a contradiction, a refusal, a chat answer) with
-chunks from `ui/fixtures/chunks.json`. Zero HTTP calls — if the network or
+with chunks from `ui/fixtures/chunks.json`. Tab mapping: Chat → chat,
+Draft → draft (Run precheck → precheck), Review → review, Research →
+refusal (the off-corpus honesty demo). Zero HTTP calls — if the network or
 LLM API fails mid-demo, flip this and carry on. Fixture validity (quotes
 verbatim in cited chunks, all ids resolve) is pinned by
 `tests/test_ui_fixtures.py`.

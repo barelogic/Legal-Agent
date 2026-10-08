@@ -56,8 +56,10 @@ def post_answer(
     """POST /answer and parse the body as an ``Answer`` model.
 
     ``precheck`` / ``provided_values`` are forward-compatible draft keys:
-    sent when set, but the current backend ignores unknown fields, so the
-    UI derives precheck displays client-side from the returned Answer.
+    sent when set, but the current backend ``AskIn`` (``api/main.py``) has
+    no such fields, so the server ignores them and the UI derives precheck
+    displays client-side from the returned Answer. The redraft screen says
+    this outright instead of pretending the values were consumed.
     """
     payload: dict = {"question": question, "workflow": workflow}
     if top_k is not None:

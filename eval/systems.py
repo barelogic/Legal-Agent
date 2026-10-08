@@ -10,10 +10,13 @@ Uses contracts/schemas.py exactly (Doc, Chunk, Answer, Claim). No schema edits.
 - hybrid_verified: HybridIndex.retrieve + answer_from_chunks + verify.
   Falls back to lexical when ML libs are absent (still a valid ablation:
   reports backend used per query in trace).
+- baseline_plain_rag: plain free-text RAG (eval/plain_rag.py). Hybrid top-5
+  retrieval + ONE free-text prompt via the same live LLM as the pipeline.
+  No claims, no verifier. Eval-time only, the answer is split into atomic
+  claims and judged by the independent judge (see plain_rag.evaluate_*).
 
-All systems share the MockClient so numbers are reproducible with one
-command and offline. Live-LLM runs remain possible via env but are NOT
-the reported numbers (write-up must say which client produced each table).
+All MockClient systems share determinism offline. Live-LLM runs happen when
+LLM_PROVIDER != mock with a working key (mode logged per answer trace).
 """
 
 from __future__ import annotations
@@ -23,7 +26,7 @@ from typing import Literal
 
 from contracts.schemas import Answer, Chunk, Claim, Doc
 from generation.claims import generate_claims
-from generation.llm import MockClient
+from generation.llm import make_client
 from retrieval.store import Registry
 from verify.citations import build_citations
 from verify.verifier import verify_all
@@ -31,7 +34,7 @@ from workflows.answer import REFUSAL, answer_from_chunks, render_text
 
 SystemName = Literal[
     "full_lexical_verified", "baseline_no_verify", "hybrid_verified",
-    "baseline_injected",
+    "baseline_injected", "baseline_plain_rag",
 ]
 
 INJECTED_TEXT = "The court awarded punitive damages of Rs. 999 crore."
@@ -54,9 +57,23 @@ def run_system(
     top_k: int = 4,
     workflow: str = "chat",
 ) -> Answer:
-    """Run one system on one question. Deterministic (MockClient)."""
+    """Run one system on one question.
+
+    LLM client honors LLM_PROVIDER: mock (deterministic, offline default)
+    or live (gemini / openai_compatible, e.g. local Ollama). The client
+    used is logged in trace["llm_client"].
+    """
+    if system == "baseline_plain_rag":
+        from eval.plain_rag import run_plain_rag
+
+        return run_plain_rag(question, docs, chunks, workflow=workflow)
     reg = make_registry(docs, chunks)
-    llm = MockClient()
+    from generation.llm import make_client
+
+    llm = make_client()  # mock unless LLM_PROVIDER says otherwise
+    from generation.config import get_llm_model, get_llm_provider
+
+    llm_client = f"{get_llm_provider()}:{get_llm_model()}:{type(llm).__name__}"
     t0 = time.perf_counter()
     if system == "hybrid_verified":
         try:
@@ -67,11 +84,13 @@ def run_system(
             retrieved = [c for c, _ in hits]
             ans = answer_from_chunks(question, workflow, reg, llm, retrieved, t0=t0)  # type: ignore[arg-type]
             ans.trace["backend"] = "hybrid"
+            ans.trace["llm_client"] = llm_client
             return ans
         except Exception as e:
             retrieved = reg.search(question, top_k=top_k)
             ans = answer_from_chunks(question, workflow, reg, llm, retrieved, t0=t0)  # type: ignore[arg-type]
             ans.trace["backend"] = f"hybrid-fallback-lexical:{e.__class__.__name__}"
+            ans.trace["llm_client"] = llm_client
             return ans
     retrieved: list[Chunk] = reg.search(question, top_k=top_k)
     chunk_map = {c.chunk_id: c for c in retrieved}
@@ -97,6 +116,7 @@ def run_system(
             "backend": "lexical",
             "unverified": True,
             "fault_injected": True,
+            "llm_client": llm_client,
         }
         if not candidates:
             return Answer(
@@ -127,6 +147,7 @@ def run_system(
             "latency_ms": ms,
             "backend": "lexical",
             "unverified": True,
+            "llm_client": llm_client,
         }
         if not candidates:
             return Answer(
@@ -152,4 +173,5 @@ def run_system(
     # full_lexical_verified == Phase-1 path
     ans = answer_from_chunks(question, workflow, reg, llm, retrieved, t0=t0)  # type: ignore[arg-type]
     ans.trace["backend"] = "lexical"
+    ans.trace["llm_client"] = llm_client
     return ans

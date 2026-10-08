@@ -23,7 +23,7 @@ def retrieval_report(
 
     reg = make_registry(docs, chunks)
     hybrid_idx = None
-    if "hybrid_verified" in systems:
+    if "hybrid_verified" in systems or "baseline_plain_rag" in systems:
         try:
             from retrieval.hybrid import HybridIndex
 
@@ -33,16 +33,17 @@ def retrieval_report(
     out: dict = {"top_k": top_k}
     answerable = [r for r in rows if r.get("answerable")]
     for sys in systems:
+        k = 5 if sys == "baseline_plain_rag" else top_k  # plain RAG: dense top-5
         hits = recalls = rr_sum = 0
         for r in answerable:
             gold = set(r["gold_chunk_ids"])
-            if sys == "hybrid_verified" and hybrid_idx is not None:
+            if sys in ("hybrid_verified", "baseline_plain_rag") and hybrid_idx is not None:
                 try:
-                    ranked = [c.chunk_id for c, _ in hybrid_idx.retrieve(r["question"], top_k=top_k)]
+                    ranked = [c.chunk_id for c, _ in hybrid_idx.retrieve(r["question"], top_k=k)]
                 except Exception:
-                    ranked = [c.chunk_id for c in reg.search(r["question"], top_k=top_k)]
+                    ranked = [c.chunk_id for c in reg.search(r["question"], top_k=k)]
             else:
-                ranked = [c.chunk_id for c in reg.search(r["question"], top_k=top_k)]
+                ranked = [c.chunk_id for c in reg.search(r["question"], top_k=k)]
             inter = gold & set(ranked)
             if inter:
                 hits += 1
@@ -54,6 +55,7 @@ def retrieval_report(
         n = max(1, len(answerable))
         out[sys] = {
             "n": len(answerable),
+            "top_k": k,
             "hit_rate": hits / n,
             "recall@k": recalls / n,
             "mrr": rr_sum / n,

@@ -65,7 +65,13 @@ def _gemini_judge(prompt: str, model: str) -> str | None:
 
 
 def judge_answers(answers_by_system: dict[str, list], rows: list[dict]) -> dict:
-    """Score usefulness (0-2) + entailment per answer. Returns per-system means."""
+    """Score usefulness (0-5) + entailment per answer. Returns per-system means.
+
+    Usefulness rubric (deterministic fallback; live judge would use same scale):
+    - correctly refused unanswerable -> 5; refused answerable -> 0.
+    - answered unanswerable (should have refused) -> 0.
+    - answered answerable -> 1-4 by gold-span overlap + 1 if cited (cap 5).
+    """
     judge_model = get_judge_model()
     out: dict = {"judge_model": judge_model}
     live = _gemini_judge("ping", judge_model) is not None
@@ -77,21 +83,30 @@ def judge_answers(answers_by_system: dict[str, list], rows: list[dict]) -> dict:
         use_sum = ent_sum = 0.0
         for row, ans in zip(rows, answers):
             if ans.refused:
-                use = 1.0 if not row.get("answerable") else 0.0
+                use = 5.0 if not row.get("answerable") else 0.0
                 ent = 1.0 if not row.get("answerable") else 0.0
             else:
                 gold = row.get("answer_span", "") or " ".join(
                     c.text for c in ans.claims[:2]
                 )
-                ov = _overlap(gold, ans.text)
-                ent = 1.0 if ov >= 0.3 else (0.5 if ov >= 0.1 else 0.0)
-                # usefulness: non-refused answerable with citations scores;
-                # verbosity without citations is penalized.
-                use = 1.0 + (0.5 if ans.citations else -0.5) + (0.5 if ov >= 0.3 else 0.0)
-                use = max(0.0, min(2.0, use))
                 if not row.get("answerable"):
                     use = 0.0
                     ent = 0.0
+                else:
+                    ov = _overlap(gold, ans.text)
+                    ent = 1.0 if ov >= 0.3 else (0.5 if ov >= 0.1 else 0.0)
+                    if ov >= 0.5:
+                        use = 4.0
+                    elif ov >= 0.3:
+                        use = 3.0
+                    elif ov >= 0.15:
+                        use = 2.0
+                    elif ov > 0:
+                        use = 1.0
+                    else:
+                        use = 0.0
+                    # cited answers are more useful; cap at 5.
+                    use = min(5.0, use + (1.0 if ans.citations else 0.0))
             use_sum += use
             ent_sum += ent
         n = max(1, len(rows))

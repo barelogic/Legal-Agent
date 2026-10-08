@@ -27,7 +27,8 @@ from eval.metrics_grounded import groundedness_report
 from eval.metrics_retrieval import retrieval_report
 from eval.systems import run_system
 
-SYSTEMS = ("full_lexical_verified", "baseline_no_verify", "hybrid_verified", "baseline_injected")
+SYSTEMS = ("full_lexical_verified", "baseline_no_verify", "hybrid_verified",
+           "baseline_injected", "baseline_plain_rag")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,6 +77,12 @@ def main(argv: list[str] | None = None) -> int:
         judge_model = judge.get("judge_model", "unknown")
     except AttributeError:
         judge_model = "unknown"
+    from generation.config import get_llm_model as _glm, get_llm_provider as _glp
+    plain_modes = set()
+    for ans in answers_by_system.get("baseline_plain_rag", []):
+        mm = (ans.trace or {}).get("llm_mode")
+        if mm:
+            plain_modes.add(str(mm).split("(")[0])
     metrics = {
         "corpus": {
             "num_docs": stats.num_docs,
@@ -85,7 +92,9 @@ def main(argv: list[str] | None = None) -> int:
             "hf_limit": args.hf_limit,
         },
         "gold": {"n": len(rows), "answerable": sum(1 for r in rows if r.get("answerable"))},
-        "pipeline_llm": __import__("os").getenv("LLM_MODEL", "gemini-2.0-flash"),
+        "pipeline_llm": _glm(),
+        "pipeline_provider": _glp(),
+        "plain_rag_llm_mode": "+".join(sorted(plain_modes)) or "n/a",
         "judge_model": get_judge_model() if "error" not in judge else judge_model,
         "top_k": args.top_k,
         "retrieval": retrieval,
@@ -102,34 +111,51 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _label(s: str) -> str:
+    return f"{s} (synthetic)" if s == "baseline_injected" else s
+
+
+def _fmt_lat(v) -> str:
+    return f"{v:.0f}" if isinstance(v, (int, float)) else "?"
+
+
 def render_tables(m: dict) -> str:
     L: list[str] = []
     L.append(f"# Eval results (judge: {m['judge_model']} vs pipeline: {m['pipeline_llm']})")
+    L.append(f"pipeline_provider: {m.get('pipeline_provider', '?')} | "
+             f"judge_mode: {m.get('judge', {}).get('judge_mode', '?')} | "
+             f"plain_rag_llm: {m.get('plain_rag_llm_mode', '?')}")
     c = m["corpus"]
     L.append(f"Corpus: {c['num_docs']} docs / {c['num_chunks']} chunks "
              f"({c['num_real_with_source_url']} real with source_url, "
              f"{c['num_demo_without_source_url']} demo). "
              f"Gold: {m['gold']['n']} ({m['gold']['answerable']} answerable).")
-    L.append("\n## Retrieval (answerable only)")
+    L.append("\n## Retrieval (answerable only; plain RAG uses top_k=5, rest top_k="
+             f"{m.get('top_k')})")
     L.append("| system | hit_rate | recall@k | mrr |")
     L.append("|---|---|---|---|")
     for s, r in m["retrieval"].items():
         if isinstance(r, dict) and "hit_rate" in r:
-            L.append(f"| {s} | {r['hit_rate']:.3f} | {r['recall@k']:.3f} | {r['mrr']:.3f} |")
-    L.append("\n## Groundedness")
-    L.append("| system | verified_rate | cite_resolved | refusal_R | fabrication |")
-    L.append("|---|---|---|---|---|")
+            L.append(f"| {_label(s)} | {r['hit_rate']:.3f} | {r['recall@k']:.3f} | {r['mrr']:.3f} |")
+    L.append("\n## Groundedness (groundedness = mean atomic-claim support, plain RAG only)")
+    L.append("| system | groundedness | fabrication_count | fabrication_rate | trap_refusal_R | latency_ms |")
+    L.append("|---|---|---|---|---|---|")
     for s, g in m["groundedness"].items():
-        L.append(f"| {s} | {g['verified_rate']:.3f} | {g['citation_resolved_rate']:.3f} "
-                 f"| {g['refusal_recall']:.3f} | {g['fabrication_rate']:.3f} |")
-    L.append("\n## Judge (usefulness / entailment)")
+        gr = f"{g.get('groundedness', float('nan')):.3f}" \
+            if "groundedness" in g else f"{g['verified_rate']:.3f}*"
+        L.append(f"| {_label(s)} | {gr} | {g['fabrication_count']} | "
+                 f"{g['fabrication_rate']:.3f} | {g['trap_refusal_recall']:.3f} "
+                 f"(n={g['n_traps']}) | {_fmt_lat(g.get('latency_ms_mean'))} |")
+    L.append("*verified_rate shown for claim-pipeline systems (share of answerables "
+             "with >=1 surviving claim).")
+    L.append("\n## Judge (usefulness 0-5 / entailment)")
     j = m["judge"]
     L.append(f"mode: {j.get('judge_mode', '?')}")
-    L.append("| system | usefulness | entailment |")
+    L.append("| system | usefulness_0_5 | entailment |")
     L.append("|---|---|---|")
     for s, v in j.items():
         if isinstance(v, dict) and "usefulness_mean" in v:
-            L.append(f"| {s} | {v['usefulness_mean']:.3f} | {v['entailment_rate']:.3f} |")
+            L.append(f"| {_label(s)} | {v['usefulness_mean']:.3f} | {v['entailment_rate']:.3f} |")
     L.append("\n## Ablations")
     for name, a in m["ablations"].items():
         if isinstance(a, dict) and "retrieval" in a:
@@ -144,17 +170,23 @@ def render_tables(m: dict) -> str:
     else:
         L.append(f"n={q['n']} ({q['n_answerable']} answerable), "
                  f"holdout=[{', '.join(q.get('holdout_qids', []))}]")
-        L.append("| system | hit_rate | recall@k | verified | refusal_R | fabrication |")
-        L.append("|---|---|---|---|---|---|")
+        L.append("| system | hit_rate | recall@k | mrr | groundedness | fab_count | trap_refusal_R | usefulness_0_5 | latency_ms |")
+        L.append("|---|---|---|---|---|---|---|---|---|")
         for s in ("full_lexical_verified", "baseline_no_verify", "hybrid_verified",
-                  "baseline_injected"):
+                  "baseline_injected", "baseline_plain_rag"):
             r = q["retrieval"].get(s, {})
             g = q["groundedness"].get(s, {})
-            L.append(f"| {s} | {r.get('hit_rate', float('nan')):.3f} | "
+            ju = q["judge"].get(s, {})
+            gr = (f"{g.get('groundedness', float('nan')):.3f}"
+                  if "groundedness" in g
+                  else f"{g.get('verified_rate', float('nan')):.3f}*")
+            L.append(f"| {_label(s)} | {r.get('hit_rate', float('nan')):.3f} | "
                      f"{r.get('recall@k', float('nan')):.3f} | "
-                     f"{g.get('verified_rate', float('nan')):.3f} | "
-                     f"{g.get('refusal_recall', float('nan')):.3f} | "
-                     f"{g.get('fabrication_rate', float('nan')):.3f} |")
+                     f"{r.get('mrr', float('nan')):.3f} | "
+                     f"{gr} | {g.get('fabrication_count', '?')} | "
+                     f"{g.get('trap_refusal_recall', float('nan')):.3f} | "
+                     f"{ju.get('usefulness_mean', float('nan')):.3f} | "
+                     f"{_fmt_lat(g.get('latency_ms_mean'))} |")
     return "\n".join(L)
 
 

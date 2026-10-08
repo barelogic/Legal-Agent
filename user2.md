@@ -1,7 +1,120 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08, corrections re-check vs `origin/main@8c46752` (hybrid seeds union + proportional gate).
+Updated: 2026-10-08, plain-RAG baseline landed (live-capable, fallback numbers reported; live key blocked).
+
+## P1 — LIVE numbers, local Ollama `llama3.1:8b` (dev/tunable split, n=30, 25 answerable)
+
+`eval/run_all.py --hf-limit 0 --top-k 4`, all generation live
+(`openai_compatible:llama3.1:8b`, `http://localhost:11434/v1`);
+judge still `deterministic-fallback` (no second local model; Gemini judge
+404s on our key). Full table in `eval/results/tables.md`.
+
+| system | hit_rate | recall@k | mrr | grounded* | fab_count | trap_ref_R | use/5 | lat_ms |
+|---|---|---|---|---|---|---|---|---|
+| full_lexical_verified | 0.520 | 0.380 | 0.423 | 0.640 | 0 | 0.400 | 2.667 | 7269 |
+| baseline_no_verify | 0.520 | 0.380 | 0.423 | 0.840 | 6 | 0.400 | 3.433 | 3735 |
+| hybrid_verified | 0.600 | 0.500 | 0.540 | 0.720 | 0 | 0.800 | 3.400 | 2870 |
+| baseline_injected (synthetic) | 0.520 | 0.380 | 0.423 | 1.000 | 30 | 0.000 | 3.300 | 3695 |
+| baseline_plain_rag | 0.640 | 0.550 | 0.548 | 0.745 | 17 | 0.000 | 3.667 | 2422 |
+
+\*verified_rate for claim pipelines; mean atomic-claim support for plain RAG.
+The deltas MockClient hid are now visible: the verifier takes pipeline fab
+6→0 (`baseline_no_verify` vs `full`); plain RAG has the best retrieval AND
+the highest usefulness (3.667) AND the worst real fabrication (17/30, 0.000
+trap refusal) — usefulness without grounding rewards fluent hallucination.
+Hybrid leads trap refusal (0.800). Seed gold split (n=6): pipeline traps
+1.000 refusal, plain RAG 0.333 with fab 3/6.
+Mock-era tables are superseded; `plain_rag_llm_mode: openai_compatible-live`
+is logged in `metrics.json`. Test suite stays mock-pinned (`LLM_PROVIDER=mock`
+override) and green.
+
+`eval/results/tables.md` now has all five systems. Reported columns:
+groundedness, fabrication count, recall@k, MRR, trap refusal_R,
+usefulness 0-5, latency_ms, with the mode logged per table.
+
+| system | hit_rate | recall@k | mrr | groundedness | fab_count | trap_ref_R | usefulness/5 | latency_ms |
+|---|---|---|---|---|---|---|---|---|
+| full_lexical_verified | 0.520 | 0.380 | 0.423 | 1.000* | 0 | 0.000 | 2.833 | 33 |
+| baseline_no_verify | 0.520 | 0.380 | 0.423 | 1.000* | 0 | 0.000 | 2.833 | 33 |
+| hybrid_verified | 0.600 | 0.500 | 0.540 | 1.000* | 0 | 0.000 | 2.800 | 83 |
+| baseline_injected (synthetic) | 0.520 | 0.380 | 0.423 | 1.000* | 30 | 0.000 | 2.967 | 33 |
+| baseline_plain_rag | 0.640 | 0.550 | 0.548 | 1.000 | 2 | 0.000 | 3.267 | 90 |
+
+\*verified_rate for claim-pipeline systems; plain RAG shows mean atomic-claim
+support from the independent judge. `baseline_injected` stays labelled synthetic.
+What to read: plain RAG retrieves best (top-5 hybrid) and scores highest on
+usefulness (verbosity + citations reward) while being the ONLY non-synthetic
+system with fabrications (2): both are a bracketed source cross-reference
+("[See sections 478, ...]") reproduced as a citation resolving to no Doc —
+the exact failure the citation gate exists to catch. Trap refusal is 0.000
+for every system: MockClient copies trap-retrieved chunks verbatim, so the
+quote check passes; a live LLM is needed for refusal signal.
+Mode: `mock-fallback` everywhere (see next section) — treat the gap as a
+lower bound; live free text will be worse, never better.
+
+## Live status — KEY COPIED from main, first live sample in (quota-light)
+
+- Copied working `GEMINI_API_KEY` from `/tmp/opencode/legal-agent-main/.env`
+  into this worktree's `.env` (different hash from our dead key; `.env`
+  stays gitignored). Key verified with minimal calls (~10 total, spaced).
+- Judge caveat: `gemini-2.5-flash` AND `gemini-2.5-flash-lite` return **404**
+  on `:generateContent` with this key (pipeline `gemini-3.5-flash-lite`
+  works — key may be model-restricted). So generation/extraction are live,
+  claim-judging is still `mock-fallback(overlap>=0.5)` until a working
+  `JUDGE_MODEL` is found. Do NOT burn quota probing model names blindly.
+- First live sample (`baseline_plain_rag`, `gemini-live`, 3 queries):
+
+| q | trap | refused | claims (sup?) | fab | note |
+|---|---|---|---|---|---|
+| q001 | no | no | 4 (3/4) | True | mixed: partial abstention + 1 unsupported claim; chunk-id cites resolved |
+| q002 | no | no | 3 (3/3) | False | clean, well-cited |
+| q007 | yes | no | 2 (0/2) | True* | prose abstention ("no info in sources") but `refused=False`; *fab flag is extractor-on-abstention artifact, needs an abstention skip (follow-up) |
+
+- This is what MockClient could never show: live free text partially
+  abstains, over-claims, and misses traps. Full 30-query live run HELD for
+  quota — run `.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
+  when limits allow (judge will still fall back until judge model fixed).
+
+- The harness is live-capable: plain RAG generates via the pipeline LLM
+  (`LLM_PROVIDER/LLM_MODEL` = gemini/`gemini-3.5-flash-lite`), claim-judging
+  via the independent judge (`JUDGE_MODEL` = `gemini-2.5-flash` ≠ pipeline).
+  Every answer logs its mode; tables log `plain_rag_llm` + `judge_mode`.
+- But the key in `.env` returns **HTTP 401** from `generativelanguage`
+  (verified direct call; `OPENAI_API_KEY` is empty too), so `run_all.py`
+  ran fully in `mock-fallback` + `deterministic-fallback` (see table header).
+  UPDATE: resolved — working key copied from main (section above).
+- Simulated-live test proves the wiring: a hallucinating free-text LLM +
+  fake citation is flagged `fabrication=True, groundedness=0.0` with live
+  modes logged (`eval/tests/test_plain_rag.py::test_simulated_live_hallucination_caught`).
+- To get live numbers: set a working `GEMINI_API_KEY` (or `OPENAI_API_KEY` +
+  `OPENAI_BASE_URL` with `LLM_PROVIDER=openai_compatible`) and run
+  `.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
+  (dev/tunable split only; no holdout is ever scored). Retrieval for the new
+  baseline is HybridIndex top-5; dense leg is attempted but `chromadb` /
+  `sentence-transformers` are not installed, so it runs hybrid-BM25 (logged
+  in trace `backend`).
+
+## What changed (all eval-owned; `contracts/schemas.py` untouched, no core edits)
+
+- NEW `eval/plain_rag.py`: `run_plain_rag` (hybrid top-5 + one free-text
+  prompt, no claims/verifier; unresolved citations KEPT as fabrications),
+  LLM claim extractor + independent-judge claim verdicts with deterministic
+  fallbacks (sentence split; verbatim-or-≥50%-overlap), all modes logged.
+- `eval/systems.py`: `baseline_plain_rag` (top_k fixed 5).
+- `eval/metrics_grounded.py`: plain-RAG eval path, + `fabrication_count`,
+  `trap_refusal_recall`, `latency_ms_mean` for every system.
+- `eval/metrics_retrieval.py`: plain RAG scored at its own top_k=5.
+- `eval/judge.py`: usefulness rescaled 0-2 → **0-5** (rubric in docstring).
+- `eval/run_all.py` + `eval/score_queries.py`: 5 systems; tables show all
+  requested columns; injected stays `(synthetic)`.
+- NEW `eval/tests/test_plain_rag.py` (8 tests). Suite: **89 passed**.
+
+## Checks (this worktree, just now)
+
+- `pytest tests/ eval/tests/ corpus/tests/`: **89 passed** (81 + 8 new).
+- `contracts/schemas.py`: untouched (`git diff` empty).
+- `eval/build_queries.py`: 40/40 resolve against `data/processed/`.
 
 ## Landed on main
 
