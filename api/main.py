@@ -38,7 +38,9 @@ UPLOAD_DIR = Path(__file__).resolve().parent.parent / "data" / "uploads"
 
 
 class AskIn(BaseModel):
-    question: str
+    # question defaults to "" so draft/review (doc_ids-driven) work without
+    # one; run() fills a default, chat/research still 422 on empty.
+    question: str = ""
     workflow: Literal["chat", "draft", "review", "research"] = "chat"
     top_k: int | None = None
     doc_ids: list[str] | None = None

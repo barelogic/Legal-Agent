@@ -67,3 +67,18 @@ def test_hybrid_fallthrough_recorded(monkeypatch):
     assert body["trace"]["backend"] == "lexical"
     assert "hybrid failed" in body["trace"]["fallback"]
     assert any("hybrid failed" in f for f in body["trace"]["fallbacks"])
+
+
+def test_draft_without_question_reaches_workflow(monkeypatch):
+    import api.main as m
+
+    monkeypatch.setenv("LLM_PROVIDER", "mock")
+    from fastapi.testclient import TestClient
+
+    t = TestClient(m.app, raise_server_exceptions=False)
+    body = {"workflow": "draft", "draft_type": "bail_application",
+            "doc_ids": ["case_file_demo"],
+            "provided_values": {"court": "Court of Session"}}
+    resp = t.post("/answer", json=body)
+    assert resp.status_code == 200  # no `question` key at all
+    assert resp.json()["workflow"] == "draft"
