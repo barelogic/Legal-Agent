@@ -1,7 +1,27 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-09 — ladder + E4 live run launched (Ollama); P1 flags imported.
+Updated: 2026-10-09 — fetch round 2 landed on disk (~2GB); build queued behind ladder.
+
+## Fetch round 2 (this session — on disk, NOT yet built)
+
+- SC S3: added years 2020/2021/2022/2023/2025 (2024 was already in).
+  Full-bucket discovery: 1950–2026 ≈ 23GB total — deliberately NOT pulled;
+  recent-years slice ≈ 1.8GB. Per-year tar sizes logged from
+  `corpus/list_court_files.py --source sc` (e.g. 2008 864MB peak, 2026 45MB).
+- HC S3: added Sikkim 2020 (`court=11_24`, 31MB) + Calcutta circuit bench
+  Jalpaiguri 2020 (48MB). Most benches are GB-scale (Kerala 4.2GB, Madras
+  8.4GB) — discovery output in session log; small benches picked.
+- HF: `fetch_hf_legal.py --with-train` → +5,000 LSI-train rows
+  (9,861 rows total in `data/raw/hf_legal/`). Indian-Law QA still excluded
+  (derived, opt-in only).
+- Ingestion source → status: (1) SC S3 yes/6 years; (2) HC S3 3 benches;
+  (3) Benchmark-Testing dev/test/statutes/bail caps + train cap;
+  (4) sujant full; (5) Indian-Law QA no.
+- NOT built yet: `build_corpus.py` over ~5k new PDFs is CPU-heavy and would
+  pollute the running ladder's `latency_ms`. Build + trap-overlap recompute
+  + commit after the ladder lands. Fetch manifest in
+  `data/raw/_court_fetch_log.json` (tracked).
 
 ## Ladder + E4 (this session, commit `52b1a79`)
 
