@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-09, at `3ac2d8b` (core batch merged to main, pushed to origin).
+Updated: 2026-10-09, at `fe87e4c` on main (corrections pass merged, pushed to origin; branch at `dfe2f3a`).
 
 ## Landed on main (all pushed to origin)
 
@@ -202,7 +202,7 @@ compatible). 12 tests prove each flag flips behaviour on a fixed fixture.
   (read-only; tests use fixtures, suite stays hermetic).
 - Suite: **121 passed** (106 + 15 new), schemas untouched.
 
-## Corrections 2026-10-09 pass (on `core/phase-1`, unmerged)
+## Corrections 2026-10-09 pass (merged `fe87e4c`, pushed)
 
 Report: `/home/frost/correctionsfile.md` (fresh pass, main @ `3ac2d8b`).
 Two core items, both done here:
@@ -223,6 +223,16 @@ Two core items, both done here:
   flakiness source; OpenAI leg already hardcoded 0 and now honors the env);
   `Answer.trace["llm"]` records provider/model/temperature (mock shows
   `"mock (deterministic)"`). Trace-dict only, schemas untouched.
+- **P2 planted pair (B2 follow-up).** `eval/workflow_metrics.py::planted_docs`
+  (branch `eval/data-eval`) is the real planted-conflict source: shared FIR
+  0451/2024, surety Rs. 50,000 vs 75,000, arrest 15/03 vs 18/03/2024.
+  `test_review_p2_planted_pair` runs the full pipeline on byte-identical
+  copies (same IDs/texts; vendored, not imported — this suite never reaches
+  into another user's worktree) and expects exactly {surety amount, date of
+  arrest}. Doing it exposed a real MockClient bug: first-sentence split cut
+  at "No. " (claim became "FIR No", P2's eval path never saw this — it uses
+  hand-made claims). Fixed with an abbreviation list (same precedent as the
+  existing "v. CBI" guard), pinned by test. Suite: **177 passed**.
 
 ## Hybrid truth-check (2026-10-09, bge-m3 + reranker on 1485-chunk corpus)
 

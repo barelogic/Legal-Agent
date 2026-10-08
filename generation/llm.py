@@ -26,14 +26,24 @@ class MockClient:
     def __init__(self, chunks: list[Chunk] | None = None) -> None:
         self._chunks = chunks or []
 
+    # Abbreviations whose trailing "." never ends a sentence (P2's planted
+    # texts break on "No. " without this: claim becomes "FIR No").
+    _ABBREV = frozenset(
+        "no rs st mr mrs ms dr v vs sr jr esp viz inc ltd co fig nos ss s".split()
+    )
+
     def complete_claims(self, prompt: str) -> str:
         out = []
         for i, ch in enumerate(self._chunks):
             # First sentence (split on ". " so "v. CBI" doesn't cut early).
             parts = ch.text.split(". ")
             first = parts[0].strip()
-            if re.search(r"\b[vV]$", first) and len(parts) > 1:
-                first = (first + ". " + parts[1]).strip()
+            k = 1
+            tail = (first.split() or [""])[-1].rstrip(".").lower()
+            while k < len(parts) and (re.search(r"\b[vV]$", first) or tail in self._ABBREV):
+                first = (first + ". " + parts[k]).strip()
+                k += 1
+                tail = (first.split() or [""])[-1].rstrip(".").lower()
             text = first[:280].rsplit(" ", 1)[0] if len(first) > 280 else first
             quote = text[:180].rsplit(" ", 1)[0] if len(text) > 180 else text
             if not quote or quote not in ch.text:  # keep verbatim guarantee
