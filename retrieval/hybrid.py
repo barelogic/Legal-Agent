@@ -80,7 +80,14 @@ class HybridIndex:
             return None
         return BM25Okapi(corpus)
 
-    def _bm25_rank(self, query: str, pool_idx: list[int]) -> list[str]:
+    def _bm25_rank(
+        self, query: str, pool_idx: list[int], min_overlap: int = 2
+    ) -> list[str]:
+        """Lexical leg: rank by BM25, keep docs sharing >= min_overlap tokens.
+
+        Same refusal lever as retrieval/store.py. The dense leg is NOT gated
+        here: embeddings match paraphrases that share no tokens by design.
+        """
         if not pool_idx:
             return []
         qtok = _tokens(query)
@@ -91,7 +98,10 @@ class HybridIndex:
             scored = []
             for i in pool_idx:
                 cc = Counter(_tokens(self.chunks[i].text))
-                s = sum(min(qcount[t], cc[t]) for t in qcount if t in cc)
+                overlap = {t for t in qcount if t in cc}
+                if len(overlap) < min_overlap:
+                    continue
+                s = sum(min(qcount[t], cc[t]) for t in overlap)
                 if s > 0:
                     scored.append((s, self.chunks[i].chunk_id))
             scored.sort(key=lambda x: (-x[0], x[1]))
@@ -100,14 +110,14 @@ class HybridIndex:
 
         scores = self._bm25.get_scores(qtok)
         # NOTE: BM25 scores can be negative on tiny corpora (IDF with N=1),
-        # so rank by score but keep docs sharing >=1 query token (overlap
-        # mask) instead of filtering on score > 0.
+        # so rank by score but keep docs clearing the overlap gate instead
+        # of filtering on score > 0.
         qset = set(qtok)
         ranked = sorted(pool_idx, key=lambda i: (-scores[i], self.chunks[i].chunk_id))
         return [
             self.chunks[i].chunk_id
             for i in ranked
-            if qset & set(_tokens(self.chunks[i].text))
+            if len(qset & set(_tokens(self.chunks[i].text))) >= min_overlap
         ]
 
     # -- dense (optional, cached on disk) --------------------------------
@@ -180,7 +190,11 @@ class HybridIndex:
 
     # -- public API --------------------------------------------------------
     def retrieve(
-        self, query: str, top_k: int = 8, doc_ids: list[str] | None = None
+        self,
+        query: str,
+        top_k: int = 8,
+        doc_ids: list[str] | None = None,
+        min_overlap: int = 2,
     ) -> list[tuple[Chunk, float]]:
         """Fuse BM25 + dense via RRF, rerank, return [(Chunk, score)]."""
         allowed = set(doc_ids) if doc_ids else None
@@ -192,7 +206,7 @@ class HybridIndex:
             return []
         pool_ids = {self.chunks[i].chunk_id for i in pool_idx}
         pool_docs = {self.chunks[i].doc_id for i in pool_idx}
-        bm25_rank = self._bm25_rank(query, pool_idx)
+        bm25_rank = self._bm25_rank(query, pool_idx, min_overlap=min_overlap)
         dense_rank = [
             cid for cid in self._dense_rank(query, pool_docs, n=max(top_k * 3, 20))
             if cid in pool_ids
@@ -248,7 +262,12 @@ def rebuild_index() -> HybridIndex:
 
 
 def retrieve(
-    query: str, top_k: int = 8, doc_ids: list[str] | None = None
+    query: str,
+    top_k: int = 8,
+    doc_ids: list[str] | None = None,
+    min_overlap: int = 2,
 ) -> list[tuple[Chunk, float]]:
-    """retrieve(query, top_k=8, doc_ids=None) -> [(Chunk, score)]."""
-    return get_index().retrieve(query, top_k=top_k, doc_ids=doc_ids)
+    """retrieve(query, top_k=8, doc_ids=None, min_overlap=2) -> [(Chunk, score)]."""
+    return get_index().retrieve(
+        query, top_k=top_k, doc_ids=doc_ids, min_overlap=min_overlap
+    )

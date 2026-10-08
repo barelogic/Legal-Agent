@@ -33,7 +33,8 @@ def test_fabricated_claim_dropped():
     from verify.verifier import verify_all
 
     reg = _reg()
-    chunks = reg.search("bail", top_k=1)
+    chunks = reg.search("bail non-bailable", top_k=1)
+    assert chunks  # multi-token query clears the min-overlap gate
     cmap = {c.chunk_id: c for c in chunks}
     bad = parse_claims('[{"text": "The moon grants bail.", "chunk_ids": ["%s"], "quote": "totally invented"}]' % chunks[0].chunk_id)
     v, f = verify_all(bad, cmap)

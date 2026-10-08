@@ -5,11 +5,11 @@ be traceable to a retrieved source. A single fabricated fact fails us.
 
 ## Who works here
 
-| User | Area | Branch |
-| --- | --- | --- |
-| Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `core/phase-1` |
-| user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `eval/data-eval` |
-| user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` |
+<| User | Area | Branch | Worktree |
+| --- | --- | --- | --- |
+| Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `core/phase-1` | `/home/frost/legal-agent-core` |
+| user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `eval/data-eval` | `/home/frost/legal-agent-eval` |
+| user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` | `/home/frost/legal-agent` (main tree) |
 
 All commits share one git username, so **branches — not authors — separate work**.
 `main` takes merges, not direct feature work.
@@ -23,10 +23,20 @@ All commits share one git username, so **branches — not authors — separate w
 - UI must degrade honestly when a route is absent: show the verified
   `quote` from the `Answer` and say the full-chunk fetch is unavailable.
   Never fabricate chunk text.
-- Needed from core: `GET /sources/{chunk_id}` → `Chunk` (200) / 404 when
+- Landed in core: `GET /sources/{chunk_id}` → `Chunk` (200) / 404 when
   unknown. Response shape is the frozen `Chunk` model; no schema change.
 - Render rule: verified `quote`s from `Answer.claims` are the primary display;
   `/sources/{chunk_id}` is context-only (full chunk around a quote).
+
+## Shared-checkout protocol (3 users, 1 machine)
+
+- Work only inside your worktree, on your branch. Never `checkout` or commit
+  on another user's branch.
+- Before altering any shared/tracked file: run `git status` plus
+  `git branch --show-current` first. If the tree shows another user's
+  uncommitted work or a surprise branch, stop and ask before editing.
+- All trees share one venv: `/home/frost/legal-agent/.venv/bin/python -m ...`.
+- `main` takes merges only, never direct feature work.
 
 ## Non-negotiable grounding policy
 

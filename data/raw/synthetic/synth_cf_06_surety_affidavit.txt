@@ -1,0 +1,8 @@
+SYNTHETIC CASE FILE - FOR TESTING ONLY. All persons, FIR numbers, dates, and courts are fictional.
+
+SURETY AFFIDAVIT (synthetic)
+Deponent: Mohan Lal (fictional), resident of 7 Lotus Street (fictional),
+states on oath that he knows the applicant Vikas Sharma (fictional) for six
+years, stands surety in the sum of Rs. 50,000, and undertakes to ensure the
+applicant's presence at every hearing. Identity proof annexed: fictional
+Aadhaar No. 9999-8888-7777 (invalid format, fictional).

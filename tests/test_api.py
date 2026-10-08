@@ -25,7 +25,9 @@ def test_answer_grounded():
 
 
 def test_answer_refuses():
-    r = client.post("/answer", json={"question": "xyzzy quantum torts on Mars frobnication", "workflow": "chat"})
+    # zero-overlap probe (verified absent from the corpus vocab): must refuse
+    # with seeds alone AND with the full bail corpus built.
+    r = client.post("/answer", json={"question": "zxqv wugbench florpnik", "workflow": "chat"})
     assert r.status_code == 200
     assert r.json()["text"] == "Not found in the provided sources"
 

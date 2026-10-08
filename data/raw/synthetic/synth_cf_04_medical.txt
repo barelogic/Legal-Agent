@@ -1,0 +1,7 @@
+SYNTHETIC CASE FILE - FOR TESTING ONLY. All persons, FIR numbers, dates, and courts are fictional.
+
+MEDICAL EXAMINATION REPORT (synthetic)
+Accused: Vikas Sharma (fictional), examined at Civil Hospital (fictional) on
+15 March 2024 and 18 March 2024. No fresh external injuries were recorded.
+Blood pressure and pulse were within normal limits. The doctor declared the
+accused fit for custody. Report signed by Dr. A. Nair (fictional), CMO.

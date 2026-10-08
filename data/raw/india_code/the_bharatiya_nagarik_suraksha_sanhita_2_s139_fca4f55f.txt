@@ -1,0 +1,7 @@
+Source: https://indiacode.gov.in/handle/123456789/546246
+Act: The Bharatiya Nagarik Suraksha Sanhita, 2023
+Section: 139
+Title: Contents of bond.
+(Text below is the India Code section_page_note for this section.)
+
+The bond or bail bond to be executed by any such person shall bind him to keep the peace or to be of good behaviour, as the case may be, and in the latter case the commission or attempt to commit, or the abetment of, any offence punishable with imprisonment, wherever it may be committed, is a breach of the bond or bail bond.

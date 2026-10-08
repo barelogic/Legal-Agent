@@ -1,0 +1,472 @@
+[
+ {
+  "doc_id": "statute_bnss_2023",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023",
+  "doc_type": "statute",
+  "citation": "BNSS, 2023",
+  "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250884_2_english_01042024.pdf",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 864
+ },
+ {
+  "doc_id": "statute_bns_2023",
+  "title": "The Bharatiya Nyaya Sanhita, 2023",
+  "doc_type": "statute",
+  "citation": "BNS, 2023",
+  "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250883_english_01042024.pdf",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 407
+ },
+ {
+  "doc_id": "statute_bsa_2023",
+  "title": "The Bharatiya Sakshya Adhiniyam, 2023",
+  "doc_type": "statute",
+  "citation": "BSA, 2023",
+  "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250882_english_01042024_0.pdf",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 166
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s139",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 139",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.139",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546246",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s478",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 478",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.478",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546563",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 2
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s479",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 479",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.479",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546564",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 2
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s47",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 47",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.47",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546156",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s480",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 480",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.480",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546565",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 5
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s481",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 481",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.481",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546668",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s483",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 483",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.483",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546566",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 2
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s485",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 485",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.485",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546568",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s487",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 487",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.487",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546570",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s488",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 488",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.488",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546571",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s492",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 492",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.492",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546670",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s49",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 49",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.49",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546158",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s91",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 91",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.91",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546200",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nagarik_suraksha_s_s92",
+  "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 - Section 92",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.92",
+  "source_url": "https://indiacode.gov.in/handle/123456789/546201",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "ic_the_bharatiya_nyaya_sanhita_2023_s1",
+  "title": "The Bharatiya Nyaya Sanhita, 2023 - Section 1",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Nyaya Sanhita, 2023 s.1",
+  "source_url": "https://indiacode.gov.in/handle/123456789/545493",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 2
+ },
+ {
+  "doc_id": "ic_the_bharatiya_sakshya_adhiniyam__s1",
+  "title": "The Bharatiya Sakshya Adhiniyam, 2023 - Section 1",
+  "doc_type": "statute",
+  "citation": "The Bharatiya Sakshya Adhiniyam, 2023 s.1",
+  "source_url": "https://indiacode.gov.in/handle/123456789/545895",
+  "year": 2023,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_brhc010021012020",
+  "title": "CR. MISC./1505/2020 of HARI OM KUMAR Vs The State of Bihar",
+  "doc_type": "judgment",
+  "citation": "CR. MISC./1505/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010021012020_1_2020-01-14.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_brhc010024412020",
+  "title": "CR. MISC./3024/2020 of CHANDAN KUMAR Vs THE STATE OF BIHAR",
+  "doc_type": "judgment",
+  "citation": "CR. MISC./3024/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010024412020_1_2020-03-20.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_brhc010074742020",
+  "title": "CR. MISC./4749/2020 of PRABHAT KUMAR MAHTO @ PINTU MAHTO Vs The State of Bihar",
+  "doc_type": "judgment",
+  "citation": "CR. MISC./4749/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010074742020_1_2020-01-23.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_brhc010122842020",
+  "title": "CR. MISC./8546/2020 of PAWAN KUMAR Vs THE STATE OF BIHAR",
+  "doc_type": "judgment",
+  "citation": "CR. MISC./8546/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010122842020_1_2020-03-03.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcbm010001291986",
+  "title": "APEAL/249/1986 of STATE VS B.K.PATIL Vs",
+  "doc_type": "judgment",
+  "citation": "APEAL/249/1986",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=newas/HCBM010001291986_1_2023-02-13.pdf",
+  "year": 1993,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcbm010036521997",
+  "title": "WP/6/1997 of DWARKADAS DEVIDAS SHAH and ANR. Vs THE STATE OF MAHARASHTRA and ANR.",
+  "doc_type": "judgment",
+  "citation": "WP/6/1997",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1998/court=27_1/bench=newas/HCBM010036521997_1_2008-06-20.pdf",
+  "year": 1998,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcbm070021592001",
+  "title": "APPLN/63/2001 of PARUBAI ASHOK BHOSALE and ANR . Vs THE STATE OF MAHARASHTRA .",
+  "doc_type": "judgment",
+  "citation": "APPLN/63/2001",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=kolhcdb/HCBM070021592001_1_2005-10-24.pdf",
+  "year": 2001,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcbm070049722003",
+  "title": "APPLN/581/2003 of PINTU @ AMAR ANANDA AUGHADE and ANR. Vs THE STATE OF MAHARASHTRA",
+  "doc_type": "judgment",
+  "citation": "APPLN/581/2003",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=kolhcdb/HCBM070049722003_1_2004-08-11.pdf",
+  "year": 2003,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcma011149382007",
+  "title": "CRL OP/145/2007 of GANAPATHY Vs STATE BY",
+  "doc_type": "judgment",
+  "citation": "CRL OP/145/2007",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011149382007_1_2015-01-19.pdf",
+  "year": 2007,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcma011174922002",
+  "title": "CRL A/575/2002 of AYYASAMY Vs INSPECTOR OF POLICE",
+  "doc_type": "judgment",
+  "citation": "CRL A/575/2002",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011174922002_1_2007-06-26.pdf",
+  "year": 2007,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcma011281482007",
+  "title": "CRL OP/16246/2007 of RAVI Vs THE SUB INSPECTOR OF POLICE",
+  "doc_type": "judgment",
+  "citation": "CRL OP/16246/2007",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011281482007_1_2007-06-09.pdf",
+  "year": 2007,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hcma011716972006",
+  "title": "CRL OP/283/2006 of SUBRAMANI Vs THE SUB INSPECTOR OF POLICE",
+  "doc_type": "judgment",
+  "citation": "CRL OP/283/2006",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2006/court=33_10/bench=hc_cis_mas/HCMA011716972006_1_2006-01-05.pdf",
+  "year": 2006,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_hphc010255522025",
+  "title": "CRMPM/1057/2025 of GULSHAN Vs STATE OF HP",
+  "doc_type": "judgment",
+  "citation": "CRMPM/1057/2025",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2025/court=2_5/bench=cmis/HPHC010255522025_1_2025-05-23.pdf",
+  "year": 2025,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_jhhc010004522020",
+  "title": "B.A./145/2020 of RASID ANSARI Vs THE STATE OF JHARKHAND",
+  "doc_type": "judgment",
+  "citation": "B.A./145/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010004522020_1_2020-01-22.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_jhhc010015262020",
+  "title": "B.A./516/2020 of BITTU KUMAR ALIAS PAWAN ALIAS PAWAN KUMAR GUPTA ALIAS BITTU KUMAR GUPTA ALIAS BITTU GUPTA ALIAS BIT Vs THE STATE OF JHARKHAND",
+  "doc_type": "judgment",
+  "citation": "B.A./516/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010015262020_1_2020-01-28.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_jhhc010035752020",
+  "title": "A.B.A./851/2020 of SUJEET KUMAR MEHTA Vs THE STATE OF JHARKHAND",
+  "doc_type": "judgment",
+  "citation": "A.B.A./851/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010035752020_1_2020-03-17.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_jhhc010047772020",
+  "title": "A.B.A./1129/2020 of JAGMOHAN YADAV Vs THE STATE OF JHARKHAND",
+  "doc_type": "judgment",
+  "citation": "A.B.A./1129/2020",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010047772020_1_2020-03-02.pdf",
+  "year": 2020,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_ukhc010077362009",
+  "title": "BA1/277/2009 of TEERATH NATH Vs STATE OF UTTARAKHAND",
+  "doc_type": "judgment",
+  "citation": "BA1/277/2009",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077362009_1_2009-04-08.pdf",
+  "year": 2009,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_ukhc010077442009",
+  "title": "BA1/1026/2009 of SALIM AND ANR Vs STATE OF UTTARAKHAND",
+  "doc_type": "judgment",
+  "citation": "BA1/1026/2009",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077442009_1_2009-12-24.pdf",
+  "year": 2009,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "hc_ukhc010077452009",
+  "title": "BA1/1028/2009 of MAKSOOD Vs STATE OF UTTARAKHAND",
+  "doc_type": "judgment",
+  "citation": "BA1/1028/2009",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077452009_1_2009-12-01.pdf",
+  "year": 2009,
+  "synthetic": false,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_01_fir",
+  "title": "[SYNTHETIC] synth_cf_01_fir",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_02_remand",
+  "title": "[SYNTHETIC] synth_cf_02_remand",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_03_chargesheet_excerpt",
+  "title": "[SYNTHETIC] synth_cf_03_chargesheet_excerpt",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_04_medical",
+  "title": "[SYNTHETIC] synth_cf_04_medical",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_05_bail_application",
+  "title": "[SYNTHETIC] synth_cf_05_bail_application",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_06_surety_affidavit",
+  "title": "[SYNTHETIC] synth_cf_06_surety_affidavit",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_07_fir_second",
+  "title": "[SYNTHETIC] synth_cf_07_fir_second",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ },
+ {
+  "doc_id": "synth_cf_08_bail_rejection_note",
+  "title": "[SYNTHETIC] synth_cf_08_bail_rejection_note",
+  "doc_type": "case_file",
+  "citation": null,
+  "source_url": null,
+  "year": null,
+  "synthetic": true,
+  "num_chunks": 1
+ }
+]

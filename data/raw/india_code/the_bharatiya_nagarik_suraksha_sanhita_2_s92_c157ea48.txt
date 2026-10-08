@@ -1,0 +1,7 @@
+Source: https://indiacode.gov.in/handle/123456789/546201
+Act: The Bharatiya Nagarik Suraksha Sanhita, 2023
+Section: 92
+Title: Arrest on breach of bond or bail bond for appearance.
+(Text below is the India Code section_page_note for this section.)
+
+When any person who is bound by any bond or bail bond taken under this Sanhita to appear before a Court, does not appear, the officer presiding in such Court may issue a warrant directing that such person be arrested and produced before him
