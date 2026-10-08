@@ -5,6 +5,14 @@
 - India Code sections: header parsed for source_url/act/section; body chunked
   as one statute section. Citation = "<act name> s.<num>" (verbatim parts only).
 - HF bail rows: P1 row_to_doc (doc_id/citation/source_url/year from the row).
+- HF legal sets (data/raw/hf_legal/*.jsonl): lsi statutes -> statute Docs,
+  case texts (lsi dev/test, bail, sujant) -> judgment Docs; source_url is the
+  HF blob URL of the originating parquet file. Indian-Law QA pairs are
+  derived, not primary law: only built with --with-qa, labelled [QA-DERIVED].
+- SC/HC court tars (data/raw/sc|hc/, gitignored): PDFs streamed from the
+  year/bench tar + per-file metadata; title = PDF first line or neutral
+  citation; source_url = tar object URL + #member fragment (documented in
+  corpus/README.md).
 - Synthetic case files: doc_type case_file, title prefixed [SYNTHETIC],
   source_url None (manifest flags synthetic:true).
 - Merges via save_all (new doc_ids win; P1 seed/processed docs untouched).
@@ -131,6 +139,179 @@ def build_hf_docs(raw: Path) -> tuple[list[Doc], list[Chunk]]:
     return docs, chunks
 
 
+HF_LEGAL_FILES = {  # jsonl stem -> (doc_type, title prefix, blob url)
+    "sujant": ("judgment", "",
+               "https://huggingface.co/datasets/sujantkumarkv/indian_legal_corpus"),
+    "lsi_statutes_0000": ("statute", "[LSI] ",
+        "https://huggingface.co/datasets/shounakpaul95/Benchmark-Testing/blob/refs/convert/parquet/lsi/statutes/0000.parquet"),
+    "lsi_dev_0000": ("judgment", "[LSI] ",
+        "https://huggingface.co/datasets/shounakpaul95/Benchmark-Testing/blob/refs/convert/parquet/lsi/dev/0000.parquet"),
+    "lsi_test_0000": ("judgment", "[LSI] ",
+        "https://huggingface.co/datasets/shounakpaul95/Benchmark-Testing/blob/refs/convert/parquet/lsi/test/0000.parquet"),
+    "bail_test_all_0000": ("judgment", "[Bail] ",
+        "https://huggingface.co/datasets/shounakpaul95/Benchmark-Testing/blob/refs/convert/parquet/bail/test_all/0000.parquet"),
+    "indian_law_qa": ("judgment", "[QA-DERIVED] ",
+        "https://huggingface.co/datasets/vishnun0027/Indian-Law/blob/main/data/train-00000-of-00001.parquet"),
+}
+
+
+def build_hf_legal_docs(raw: Path) -> tuple[list[Doc], list[Chunk]]:
+    """Ingest normalized HF legal rows (one Doc per row)."""
+    docs: list[Doc] = []
+    chunks: list[Chunk] = []
+    for p in sorted((raw / "hf_legal").glob("*.jsonl")):
+        meta = HF_LEGAL_FILES.get(p.stem)
+        if meta is None:
+            print(f"skip hf_legal (unknown provenance): {p.name}")
+            continue
+        dtype, prefix, url = meta
+        for n, line in enumerate(p.read_text(encoding="utf-8").splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            text = (row.get("text") or "").strip()
+            if len(text) < 40:
+                continue
+            rid = re.sub(r"[^a-z0-9]+", "_", str(row.get("id", ""))).strip("_")[:40]
+            if not rid:
+                import hashlib
+                rid = hashlib.sha1(text.encode()).hexdigest()[:12]
+            doc = Doc(doc_id=f"hfl_{p.stem}_{n:05d}_{rid}",
+                      title=f"{prefix}{str(row.get('id', ''))[:80] or p.stem}",
+                      doc_type=dtype,  # type: ignore[arg-type]
+                      citation=None, source_url=url, year=None)
+            chs = chunk_document(doc, [(1, text)], dtype)
+            docs.append(doc)
+            chunks.extend(chs)
+    print(f"hf_legal: {len(docs)} docs")
+    return docs, chunks
+
+
+def _pdf_title(pages: list[tuple[int, str]], fallback: str) -> str:
+    for _, text in pages[:2]:
+        for line in text.splitlines():
+            s = " ".join(line.split())
+            if len(s) >= 12 and not s.startswith("<"):
+                return s[:160]
+    return fallback
+
+
+def _tar_members(tar_path: Path, suffix: str) -> list[str]:
+    import tarfile
+
+    with tarfile.open(tar_path) as tf:
+        return [m.name for m in tf.getmembers()
+                if m.isfile() and m.name.endswith(suffix)]
+
+
+def build_sc_docs(raw: Path) -> tuple[list[Doc], list[Chunk]]:
+    """Ingest SC year tars: PDFs + neutral citations from metadata.tar."""
+    import tarfile
+
+    docs: list[Doc] = []
+    chunks: list[Chunk] = []
+    for year_d in sorted((raw / "sc").glob("year=*")):
+        tar_p, meta_p = year_d / "english.tar", year_d / "metadata.tar"
+        if not tar_p.is_file():
+            continue
+        tar_url = (f"https://indian-supreme-court-judgments.s3.amazonaws.com/"
+                   f"data/tar/year={year_d.name.split('=')[1]}/english/english.tar")
+        meta: dict[str, dict] = {}
+        if meta_p.is_file():
+            with tarfile.open(meta_p) as tf:
+                for m in tf.getmembers():
+                    if m.isfile() and m.name.endswith(".json"):
+                        try:
+                            rec = json.loads(tf.extractfile(m).read())  # type: ignore[union-attr]
+                            meta[m.name[:-5]] = rec
+                        except Exception:
+                            continue
+        pdf_d = year_d / "pdfs"
+        pdf_d.mkdir(exist_ok=True)
+        with tarfile.open(tar_p) as tf:
+            members = [m for m in tf.getmembers()
+                       if m.isfile() and m.name.endswith(".pdf")]
+            for m in members:
+                dest = pdf_d / Path(m.name).name
+                if not dest.is_file():
+                    with open(dest, "wb") as f:
+                        f.write(tf.extractfile(m).read())  # type: ignore[union-attr]
+                try:
+                    pages = extract_pages(dest)
+                except Exception as e:
+                    print(f"skip sc pdf {dest.name}: {e}")
+                    continue
+                if not any(t.strip() for _, t in pages):
+                    continue
+                stem = dest.stem
+                # PDF members carry an _EN suffix the metadata files lack.
+                rec = meta.get(stem, {}) or meta.get(re.sub(r"_en$", "", stem, flags=re.I), {})
+                nc = rec.get("nc_display") or stem
+                year = rec.get("citation_year")
+                doc = Doc(doc_id=f"sc_{_slug(stem)}",
+                          title=_pdf_title(pages, nc),
+                          doc_type="judgment", citation=nc,
+                          source_url=f"{tar_url}#{Path(m.name).name}",
+                          year=int(year) if year else None)
+                chs = chunk_document(doc, pages, "judgment")
+                docs.append(doc)
+                chunks.extend(chs)
+        print(f"sc {year_d.name}: {len(docs)} docs")
+    return docs, chunks
+
+
+def build_hc_docs(raw: Path) -> tuple[list[Doc], list[Chunk]]:
+    """Ingest HC bench tars (CNR-ish filenames carry court + date)."""
+    import tarfile
+
+    docs: list[Doc] = []
+    chunks: list[Chunk] = []
+    for tar_p in sorted((raw / "hc").glob("**/data.tar")):
+        rel = tar_p.parent.relative_to(raw / "hc")
+        parts = rel.parts  # (year=N, court=N_M, bench=NAME)
+        info = {p.split("=", 1)[0]: p.split("=", 1)[1] for p in parts
+                if "=" in p}
+        base = (f"https://indian-high-court-judgments.s3.amazonaws.com/"
+                f"data/tar/{rel.as_posix()}/data.tar")
+        pdf_d = tar_p.parent / "pdfs"
+        pdf_d.mkdir(exist_ok=True)
+        with tarfile.open(tar_p) as tf:
+            members = [m for m in tf.getmembers()
+                       if m.isfile() and m.name.endswith(".pdf")]
+            for m in members:
+                dest = pdf_d / Path(m.name).name
+                if not dest.is_file():
+                    with open(dest, "wb") as f:
+                        f.write(tf.extractfile(m).read())  # type: ignore[union-attr]
+                try:
+                    pages = extract_pages(dest)
+                except Exception as e:
+                    print(f"skip hc pdf {dest.name}: {e}")
+                    continue
+                if not any(t.strip() for _, t in pages):
+                    continue
+                stem = dest.stem
+                ym = re.search(r"_(\d{4})-(\d{2})-(\d{2})$", stem)
+                doc = Doc(
+                    doc_id=f"hc_{_slug(info.get('court', 'c'))}_{_slug(stem)[:48]}",
+                    title=f"{info.get('court', '')} {info.get('bench', '')} {stem}"[:160],
+                    doc_type="judgment", citation=None,
+                    source_url=f"{base}#{Path(m.name).name}",
+                    year=int(ym.group(1)) if ym else (
+                        int(info.get("year", "0").split("=")[-1])
+                        if str(info.get("year", "")).isdigit() else None))
+                chs = chunk_document(doc, pages, "judgment")
+                docs.append(doc)
+                chunks.extend(chs)
+        print(f"hc {rel}: tar done")
+    print(f"hc: {len(docs)} docs")
+    return docs, chunks
+
+
 def build_synthetic_docs(raw: Path) -> tuple[list[Doc], list[Chunk]]:
     """Ingest synthetic case files (labelled in title + banner)."""
     docs: list[Doc] = []
@@ -152,14 +333,18 @@ def main(argv: list[str] | None = None) -> int:
 
     root = Path(__file__).resolve().parent.parent
     raw = root / "data" / "raw"
-    builders = (("pdf", False, build_pdf_docs),
-                ("section", False, build_section_docs),
-                ("hf", False, build_hf_docs),
-                ("synthetic", True, build_synthetic_docs))
+    builders = (("pdf", False, "mha-pdf", build_pdf_docs),
+                ("section", False, "india-code", build_section_docs),
+                ("hf", False, "hf-bail", build_hf_docs),
+                ("hf_legal", False, "hf-legal", build_hf_legal_docs),
+                ("sc", False, "supreme-court", build_sc_docs),
+                ("hc", False, "high-court", build_hc_docs),
+                ("synthetic", True, "synthetic", build_synthetic_docs))
     all_docs: list[Doc] = []
     all_chunks: list[Chunk] = []
     synthetic_ids: set[str] = set()
-    for _name, is_synth, builder in builders:
+    origin_of: dict[str, str] = {}
+    for _name, is_synth, origin, builder in builders:
         try:
             docs, chunks = builder(raw)
         except FileNotFoundError as e:
@@ -167,6 +352,8 @@ def main(argv: list[str] | None = None) -> int:
             continue
         if is_synth:
             synthetic_ids.update(d.doc_id for d in docs)
+        for d in docs:
+            origin_of.setdefault(d.doc_id, origin)
         all_docs.extend(docs)
         all_chunks.extend(chunks)
     if not all_docs:
@@ -179,6 +366,7 @@ def main(argv: list[str] | None = None) -> int:
         # Provenance tracked from the builder above, never inferred from
         # the doc_id slug (slugs are allowed to change).
         "synthetic": d.doc_id in synthetic_ids,
+        "origin": origin_of.get(d.doc_id, "?"),
         "num_chunks": sum(1 for c in all_chunks if c.doc_id == d.doc_id),
     } for d in all_docs]
     (root / "corpus" / "manifest.json").write_text(
