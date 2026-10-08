@@ -29,7 +29,28 @@ quote check passes; a live LLM is needed for refusal signal.
 Mode: `mock-fallback` everywhere (see next section) — treat the gap as a
 lower bound; live free text will be worse, never better.
 
-## Live status — BLOCKED on key (P1 action needed for live numbers)
+## Live status — KEY COPIED from main, first live sample in (quota-light)
+
+- Copied working `GEMINI_API_KEY` from `/tmp/opencode/legal-agent-main/.env`
+  into this worktree's `.env` (different hash from our dead key; `.env`
+  stays gitignored). Key verified with minimal calls (~10 total, spaced).
+- Judge caveat: `gemini-2.5-flash` AND `gemini-2.5-flash-lite` return **404**
+  on `:generateContent` with this key (pipeline `gemini-3.5-flash-lite`
+  works — key may be model-restricted). So generation/extraction are live,
+  claim-judging is still `mock-fallback(overlap>=0.5)` until a working
+  `JUDGE_MODEL` is found. Do NOT burn quota probing model names blindly.
+- First live sample (`baseline_plain_rag`, `gemini-live`, 3 queries):
+
+| q | trap | refused | claims (sup?) | fab | note |
+|---|---|---|---|---|---|
+| q001 | no | no | 4 (3/4) | True | mixed: partial abstention + 1 unsupported claim; chunk-id cites resolved |
+| q002 | no | no | 3 (3/3) | False | clean, well-cited |
+| q007 | yes | no | 2 (0/2) | True* | prose abstention ("no info in sources") but `refused=False`; *fab flag is extractor-on-abstention artifact, needs an abstention skip (follow-up) |
+
+- This is what MockClient could never show: live free text partially
+  abstains, over-claims, and misses traps. Full 30-query live run HELD for
+  quota — run `.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
+  when limits allow (judge will still fall back until judge model fixed).
 
 - The harness is live-capable: plain RAG generates via the pipeline LLM
   (`LLM_PROVIDER/LLM_MODEL` = gemini/`gemini-3.5-flash-lite`), claim-judging
@@ -38,6 +59,7 @@ lower bound; live free text will be worse, never better.
 - But the key in `.env` returns **HTTP 401** from `generativelanguage`
   (verified direct call; `OPENAI_API_KEY` is empty too), so `run_all.py`
   ran fully in `mock-fallback` + `deterministic-fallback` (see table header).
+  UPDATE: resolved — working key copied from main (section above).
 - Simulated-live test proves the wiring: a hallucinating free-text LLM +
   fake citation is flagged `fabrication=True, groundedness=0.0` with live
   modes logged (`eval/tests/test_plain_rag.py::test_simulated_live_hallucination_caught`).
