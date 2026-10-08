@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-09, at `3ac2d8b` (core batch merged to main, pushed to origin).
+Updated: 2026-10-09, at `fe87e4c` on main (corrections pass merged, pushed to origin; branch at `dfe2f3a`).
 
 ## Landed on main (all pushed to origin)
 
@@ -202,7 +202,7 @@ compatible). 12 tests prove each flag flips behaviour on a fixed fixture.
   (read-only; tests use fixtures, suite stays hermetic).
 - Suite: **121 passed** (106 + 15 new), schemas untouched.
 
-## Corrections 2026-10-09 pass (on `core/phase-1`, unmerged)
+## Corrections 2026-10-09 pass (merged `fe87e4c`, pushed)
 
 Report: `/home/frost/correctionsfile.md` (fresh pass, main @ `3ac2d8b`).
 Two core items, both done here:
