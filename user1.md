@@ -202,6 +202,28 @@ compatible). 12 tests prove each flag flips behaviour on a fixed fixture.
   (read-only; tests use fixtures, suite stays hermetic).
 - Suite: **121 passed** (106 + 15 new), schemas untouched.
 
+## Corrections 2026-10-09 pass (on `core/phase-1`, unmerged)
+
+Report: `/home/frost/correctionsfile.md` (fresh pass, main @ `3ac2d8b`).
+Two core items, both done here:
+
+- **Judgment routing merged.** Cross-case queries ("which cases was bail
+  granted, by which court") refused with `routing: None` because all-statute
+  retrieval starved the claims stage. Merged `core/routing-judgment`
+  (`ab8e7be`): `doc_routing()` in `retrieval/store.py` (single source of
+  truth) flags queries carrying ≥2 outcome/court signals; lexical leg adds
+  +3 to judgment-doc chunks, hybrid leg +0.10 post-RRF; `trace["routing"]`
+  records it. Gates + verifier unchanged — wider routing only proposes.
+  Conflicts were append-append (tests + trace dict); verified the merged
+  hybrid hunk (`self.docs` is populated by `get_index()`, guarded falsy in
+  bare-index tests). Suite: **175 passed** (171 + 4 temp-0).
+- **Temp-0 + recorded policy.** Bailable flakiness is live-LLM sampling, not
+  grounding (refusals stay honest). `LLM_TEMPERATURE` (default **0.0**):
+  `GeminiClient` now defaults to it (was provider default ~1.0 — the
+  flakiness source; OpenAI leg already hardcoded 0 and now honors the env);
+  `Answer.trace["llm"]` records provider/model/temperature (mock shows
+  `"mock (deterministic)"`). Trace-dict only, schemas untouched.
+
 ## Hybrid truth-check (2026-10-09, bge-m3 + reranker on 1485-chunk corpus)
 
 Recall@4 on `eval/datasets/queries_resolved.jsonl` (reported, never tuned;
