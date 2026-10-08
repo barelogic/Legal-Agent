@@ -81,6 +81,10 @@ Machine for all rows below: RTX 4060 Laptop 8GB, driver 615.71.09.
   Single sample, not a split metric — proves the local path end to end.
 - Suites: `tests/` **130 passed**; `ops/tests/` **3 passed**;
   `contracts/schemas.py` untouched (`git diff` empty).
+- Serving note: the resident Ollama instance at smoke time ran with loaded
+  context 4096 (`ollama ps` CONTEXT 4096, 45%/55% CPU/GPU split) — ample for
+  top_k=4 claims prompts; model max stays 131072. Report the loaded ctx
+  alongside every latency row.
 
 ### Prior full dev-split reference (NOT mine — user2, `eval/data-eval`)
 

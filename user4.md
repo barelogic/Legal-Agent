@@ -55,6 +55,9 @@ Updated: 2026-10-09 — branch + `ops/` + docs landed; dev-split rerun running.
   (seeds registry; `data/processed/` absent in this worktree, 6196-doc build
   deferred to prefetch), `--out /tmp/opencode/local-llm-results/` so `eval/`
   stays untouched. Background shell `sh_11d177529001MVpI51Jp0y1iRp`.
+- 01:36 check: run still alive (PID 193494, 9 min elapsed / ~20s CPU —
+  waiting on local generations); resident model serving ctx 4096 noted in
+  `docs/local_llm.md`.
 - On landing: paste the 5-system table here with full provenance
   (model/quant/ctx/backend/machine), then run the network-off test and log it.
 - Never scores holdout (harness lists holdout qids, excludes them).
