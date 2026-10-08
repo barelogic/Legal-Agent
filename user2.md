@@ -36,29 +36,34 @@ Updated: 2026-10-08 night — corrections sweep done (all user2 items); live ref
 
 ## P1 — LIVE numbers, local Ollama `llama3.1:8b` (dev/tunable split, n=30, 25 answerable)
 
-`eval/run_all.py --hf-limit 0 --top-k 4`, all generation live
-(`openai_compatible:llama3.1:8b`, `http://localhost:11434/v1`);
-judge still `deterministic-fallback` (no second local model; Gemini judge
-404s on our key). Full table in `eval/results/tables.md`.
+Refreshed post-corrections (`run_all.py --hf-limit 0 --top-k 4`, unified
+47-doc corpus, F1 judge). All generation live
+(`openai_compatible:llama3.1:8b`); judge still `deterministic-fallback`.
+Full table in `eval/results/tables.md`.
 
 | system | hit_rate | recall@k | mrr | grounded* | fab_count | trap_ref_R | use/5 | lat_ms |
 |---|---|---|---|---|---|---|---|---|
-| full_lexical_verified | 0.520 | 0.380 | 0.423 | 0.640 | 0 | 0.400 | 2.667 | 7269 |
-| baseline_no_verify | 0.520 | 0.380 | 0.423 | 0.840 | 6 | 0.400 | 3.433 | 3735 |
-| hybrid_verified | 0.600 | 0.500 | 0.540 | 0.720 | 0 | 0.800 | 3.400 | 2870 |
-| baseline_injected (synthetic) | 0.520 | 0.380 | 0.423 | 1.000 | 30 | 0.000 | 3.300 | 3695 |
-| baseline_plain_rag | 0.640 | 0.550 | 0.548 | 0.745 | 17 | 0.000 | 3.667 | 2422 |
+| full_lexical_verified | 0.520 | 0.400 | 0.423 | 0.640 | 0 | 0.600 | 2.233 | 5870 |
+| baseline_no_verify | 0.520 | 0.400 | 0.423 | 0.840 | 6 | 0.400 | 2.567 | 2964 |
+| hybrid_verified | 0.560 | 0.480 | 0.500 | 0.720 | 0 | 0.800 | 2.833 | 2817 |
+| baseline_injected (synthetic) | 0.520 | 0.400 | 0.423 | 1.000 | 30 | 0.000 | 2.100 | 3544 |
+| baseline_plain_rag | 0.640 | 0.550 | 0.516 | 0.745 | 19 | 0.000 | 2.600 | 2402 |
 
 \*verified_rate for claim pipelines; mean atomic-claim support for plain RAG.
 The deltas MockClient hid are now visible: the verifier takes pipeline fab
 6→0 (`baseline_no_verify` vs `full`); plain RAG has the best retrieval AND
 the highest usefulness (3.667) AND the worst real fabrication (17/30, 0.000
 trap refusal) — usefulness without grounding rewards fluent hallucination.
-Hybrid leads trap refusal (0.800). Seed gold split (n=6): pipeline traps
-1.000 refusal, plain RAG 0.333 with fab 3/6.
+Hybrid leads trap refusal (0.800). Gold split is now 37 rows from the
+unified corpus (was 6 seeds-only): pipeline traps refuse 1.000, plain RAG
+0.333 with fab 16/37.
 Mock-era tables are superseded; `plain_rag_llm_mode: openai_compatible-live`
 is logged in `metrics.json`. Test suite stays mock-pinned (`LLM_PROVIDER=mock`
 override) and green.
+UPDATE post-corrections: the verifier delta is now visible on the gold split
+too (`delta_verifier_fabrication = 0.297` live — baseline_no_verify fab 11/37
+vs full 0/37), where MockClient always showed 0.000. Usefulness re-based
+under F1 (stricter scale, same ranking: plain RAG still top).
 
 `eval/results/tables.md` now has all five systems. Reported columns:
 groundedness, fabrication count, recall@k, MRR, trap refusal_R,
