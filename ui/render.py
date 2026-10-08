@@ -361,6 +361,15 @@ def draft_html(answer: Answer) -> str:
     by_id = _claims_by_id(answer)
     out: list[str] = []
     buf = ""
+    missing_re = re.compile(r"\[MISSING: (.*?)\]")
+    user_re = re.compile(r"\[USER-PROVIDED: (.*?)\]")
+
+    def _style_literal_markers(escaped_text: str) -> str:
+        # Replaces literal markers with their corresponding styled chips.
+        # escaped_text has already passed through html.escape
+        text = missing_re.sub(lambda m: missing_chip(html.unescape(m.group(1))), escaped_text)
+        text = user_re.sub(lambda m: user_provided_chip(html.unescape(m.group(1))), text)
+        return text
 
     def flush(marker_cid: str | None) -> None:
         nonlocal buf
@@ -373,12 +382,13 @@ def draft_html(answer: Answer) -> str:
                 validate_claim_renderable(claim)
             else:
                 raise ValueError("no claim")
+            styled_buf = _style_literal_markers(html.escape(buf))
             out.append(
                 f'<span class="sourced" title="{html.escape(quote)}">'
-                f"{html.escape(buf)}</span>"
+                f"{styled_buf}</span>"
             )
         except ValueError:
-            out.append(html.escape(buf))
+            out.append(_style_literal_markers(html.escape(buf)))
         buf = ""
 
     for seg, cid in split_text_markers(answer.text):

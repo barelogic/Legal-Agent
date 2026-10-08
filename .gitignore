@@ -7,3 +7,8 @@ __pycache__/
 data/processed/
 data/uploads/
 data/chroma/
+# bulky fetched archives: reproducible via corpus/fetch_*.py, never committed.
+# (fetch manifests + small curated raws stay tracked; see corpus/README.md)
+data/raw/sc/
+data/raw/hc/
+data/raw/hf_legal/

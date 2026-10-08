@@ -56,6 +56,55 @@ SOURCES: list[dict] = [
         "not the full judgment: chunks support case-level facts only.",
     },
     {
+        "key": "sc_s3_judgments",
+        "kind": "judgments",
+        "title": "indian-supreme-court-judgments S3 (eCourts PDFs + metadata)",
+        "url": "https://indian-supreme-court-judgments.s3.amazonaws.com/",
+        "via": "corpus/fetch_court_tars.py (per-year english.tar + metadata.tar)",
+        "licence": "Supreme Court of India judgments (public records)",
+        "terms_note": "Doc per PDF; citation = neutral citation (nc_display) from "
+        "metadata.tar; title = PDF first line or neutral citation. source_url = "
+        "tar object URL + #member fragment identifying exact bytes in the tar.",
+    },
+    {
+        "key": "hc_s3_judgments",
+        "kind": "judgments",
+        "title": "indian-high-court-judgments S3 (eCourts PDFs, per court/bench)",
+        "url": "https://indian-high-court-judgments.s3.amazonaws.com/",
+        "via": "corpus/fetch_court_tars.py (per-bench data.tar + data.index.json)",
+        "licence": "High Court judgments (public records)",
+        "terms_note": "Filenames carry CNR-ish IDs + dates; same tar#member source_url rule.",
+    },
+    {
+        "key": "hf_sujant_legal",
+        "kind": "judgments",
+        "title": "sujantkumarkv/indian_legal_corpus",
+        "url": "https://huggingface.co/datasets/sujantkumarkv/indian_legal_corpus",
+        "via": "corpus/fetch_hf_legal.py (full train split, 1288 rows)",
+        "licence": "per dataset card",
+        "terms_note": "Excerpt rows (commentary/case text); one Doc per row.",
+    },
+    {
+        "key": "hf_benchmark_testing",
+        "kind": "judgments+statutes",
+        "title": "shounakpaul95/Benchmark-Testing (parquet branch)",
+        "url": "https://huggingface.co/datasets/shounakpaul95/Benchmark-Testing",
+        "via": "corpus/fetch_hf_legal.py (lsi statutes/dev/test + bail test caps)",
+        "licence": "MIT (dataset card)",
+        "terms_note": "lsi/statutes rows are IPC-style section texts (statute Docs); "
+        "case rows are <ENTITY>-anonymized. source_url = per-file blob URL.",
+    },
+    {
+        "key": "hf_indian_law_qa",
+        "kind": "derived-qa",
+        "title": "vishnun0027/Indian-Law (Instruction/Response pairs)",
+        "url": "https://huggingface.co/datasets/vishnun0027/Indian-Law",
+        "via": "corpus/fetch_hf_legal.py --with-qa only (opt-in)",
+        "licence": "per dataset card",
+        "terms_note": "DERIVED Q&A, not primary law. Excluded by default; when built, "
+        "titles carry [QA-DERIVED] and must never be cited as holdings.",
+    },
+    {
         "key": "synthetic_case_files",
         "kind": "case_files",
         "title": "Synthetic bail case files (generated for this corpus)",
