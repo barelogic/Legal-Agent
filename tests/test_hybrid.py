@@ -80,3 +80,25 @@ def test_module_retrieve_uses_seed_corpus():
     h._INDEX = None  # force rebuild from seeds (no processed JSONL in repo)
     hits = retrieve("bail non-bailable", top_k=4)
     assert hits and all(isinstance(s, float) for _, s in hits)
+
+
+def test_label_bonus_counted_once():
+    import pytest as _pytest
+
+    from retrieval.hybrid import HybridIndex
+
+    doc = Doc(doc_id="lb", title="L", doc_type="statute")
+    assert doc
+    c = Chunk(
+        chunk_id="lb::p1::c0",
+        doc_id="lb",
+        text="bail provision text here",
+        section_label="Section 483",
+    )
+    idx = HybridIndex([c])
+    idx._bm25 = None  # force pure-python TF leg (already adds +3)
+    idx._tf_fallback_used = True
+    hits = idx.retrieve("what does Section 483 say")
+    assert hits
+    # RRF of a single list is 1/61; a second +0.05 would show here.
+    assert hits[0][1] == _pytest.approx(1 / 61)

@@ -23,12 +23,19 @@ from ingest.pipeline import save_all, slugify  # noqa: E402
 HF_DATASET = "Sumitedu/indian-case-laws"
 
 
-def row_to_doc(row: dict) -> tuple[Doc, list[Chunk]]:
-    """Map one HF row to (Doc, chunks). Every field comes from the row."""
+def row_to_doc(row: dict, fallback: str = "") -> tuple[Doc, list[Chunk]]:
+    """Map one HF row to (Doc, chunks). Every field comes from the row.
+
+    fallback disambiguates rows with no CNR and no metadata id (both empty
+    slug to "doc" and would collide); ingest_hf passes the row index.
+    """
     cnr = (row.get("cnr_number") or "").strip()
     source = (row.get("dataset_source") or "hc").strip() or "hc"
     meta_id = (row.get("case_metadata_id") or "").strip()
-    doc_id = slugify(f"{source}_{cnr}" if cnr else meta_id)
+    stem = f"{source}_{cnr}" if cnr else meta_id
+    if not stem.strip():
+        stem = fallback.strip() or "hf_row_unknown"
+    doc_id = slugify(stem)
     title = (row.get("case_title") or doc_id).strip()
     citation = (
         row.get("neutral_citation")
@@ -37,13 +44,17 @@ def row_to_doc(row: dict) -> tuple[Doc, list[Chunk]]:
         or None
     )
     year = row.get("decision_year") or row.get("citation_year")
+    try:
+        year_int = int(year) if year not in (None, "") else None
+    except (ValueError, TypeError):
+        year_int = None  # e.g. "unknown": no year invented
     doc = Doc(
         doc_id=doc_id,
         title=title,
         doc_type="judgment",
         citation=citation,
         source_url=row.get("source_pdf_s3_url"),
-        year=int(year) if year else None,
+        year=year_int,
     )
     header_lines = [
         f"Case: {title}.",
@@ -69,7 +80,12 @@ def iter_hf_rows(
     court: str | None = None,
     max_scan: int = 20000,
 ) -> Iterator[dict]:
-    """Stream rows from HF (never loads 17M rows). Filters apply client-side."""
+    """Stream rows from HF (never loads 17M rows). Filters apply client-side.
+
+    max_scan is a scan budget counting every streamed row INCLUDING
+    filter-skipped ones, so a heavily filtered ingest can return fewer than
+    `limit` docs. Raise max_scan if a filtered ingest comes up short.
+    """
     try:
         from datasets import load_dataset
     except ImportError as e:
@@ -96,8 +112,10 @@ def ingest_hf(
     """Stream, map and persist HF rows. Returns (docs, chunks)."""
     docs: list[Doc] = []
     chunks: list[Chunk] = []
-    for row in iter_hf_rows(limit=limit, disposition=disposition, court=court):
-        doc, chs = row_to_doc(row)
+    for n, row in enumerate(
+        iter_hf_rows(limit=limit, disposition=disposition, court=court)
+    ):
+        doc, chs = row_to_doc(row, fallback=f"hf_row_{n}")
         docs.append(doc)
         chunks.extend(chs)
     if docs:

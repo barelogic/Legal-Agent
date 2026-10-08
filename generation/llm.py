@@ -109,7 +109,12 @@ class OpenAICompatibleClient:
             timeout=60,
         )
         r.raise_for_status()
-        return r.json()["choices"][0]["message"]["content"]
+        try:
+            return r.json()["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as e:
+            raise RuntimeError(
+                f"unexpected OpenAI-compatible response: {r.text[:500]!r}"
+            ) from e
 
 
 def make_client(chunks_for_mock: list[Chunk] | None = None) -> LLMClient:
