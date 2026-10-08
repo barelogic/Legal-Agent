@@ -36,6 +36,7 @@
    "new_section": "531",
    "relation": "repealed-by",
    "quote": "531. (1) The Code of Criminal Procedure, 1973 is hereby repealed",
+   "quote_normalized": false,
    "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250884_2_english_01042024.pdf",
    "origin": "repeal-section"
   },
@@ -45,7 +46,8 @@
    "new_act": "bharatiya_nyaya_sanhita",
    "new_section": "358",
    "relation": "repealed-by",
-   "quote": "358. (1) The Indian Penal Code is herebyrepealed",
+   "quote": "358. (1) The Indian Penal Code is hereby repealed",
+   "quote_normalized": true,
    "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250883_english_01042024.pdf",
    "origin": "repeal-section"
   },
@@ -56,6 +58,7 @@
    "new_section": "170",
    "relation": "repealed-by",
    "quote": "170. (1) The Indian Evidence Act, 1872 is hereby repealed",
+   "quote_normalized": false,
    "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250882_english_01042024_0.pdf",
    "origin": "repeal-section"
   }

@@ -17,6 +17,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
+def _norm(s: str) -> str:
+    """Casefold + whitespace fold (same rule as verify/verifier.py).
+
+    The stored span keeps its original text; matching is normalized so a
+    span is not rejected over casing/spacing drift in ingest.
+    """
+    return " ".join(s.split()).casefold()
+
+
 def load_queries(path: Path) -> list[dict]:
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
     assert len(rows) == 40, f"expected 40 queries, got {len(rows)}"
@@ -43,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
             if not span:
                 errors.append(f"{r['qid']}: answerable but empty span")
                 continue
-            hits = [c for c in chunks if span in c.text]
+            hits = [c for c in chunks if _norm(span) in _norm(c.text)]
             if not hits:
                 errors.append(f"{r['qid']}: span not found verbatim in any chunk")
                 continue

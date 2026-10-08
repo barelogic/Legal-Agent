@@ -64,11 +64,20 @@ def groundedness_report(
     docs: dict,
     chunks: dict,
 ) -> dict:
-    """answers_by_system[sys] aligns 1:1 with rows. Returns per-system dict."""
+    """answers_by_system[sys] aligns 1:1 with rows. Returns per-system dict.
+
+    Denominator convention (deliberate, not a bug): verified_rate is over
+    answerables, but fabrication_rate is over ALL rows — a single fabricated
+    claim on any row is a hard fail. `unverified` pipeline claims count as
+    surviving (baselines mark candidates unverified) and are re-checked
+    against chunk text independently of pipeline status flags.
+    """
     out: dict = {}
     trap_idx = set(_trap_rows(rows))
+    trap_def = ("trap-flag" if any(r.get("trap") is True for r in rows)
+                else "unanswerable-fallback")
     for sys, answers in answers_by_system.items():
-        n_ans = fab = refused_ok = 0
+        fab = refused_ok = 0
         n_answerable = n_unanswer = refused_total = 0
         ver_count = cite_ok = cite_total = 0
         lat_sum = lat_n = 0
@@ -92,8 +101,6 @@ def groundedness_report(
                         ver_count += 1
                     if ev["fabrication"]:
                         fab += 1
-                    else:
-                        n_ans += 1
                     for ci in ans.citations:
                         cite_total += 1
                         if ci.doc_id in docs and ci.resolved:
@@ -119,7 +126,6 @@ def groundedness_report(
                     if not quote_supported(cl.quote, texts):
                         fab += 1
                         break
-                    n_ans += 1
                 for ci in ans.citations:
                     cite_total += 1
                     if ci.doc_id in docs and ci.resolved:
@@ -152,6 +158,7 @@ def groundedness_report(
             "fabrication_count": fab,
             "trap_refusal_recall": trap_refused / n_trap,
             "n_traps": len(trap_idx),
+            "trap_def": trap_def,
             "latency_ms_mean": (lat_sum / lat_n) if lat_n else None,
         }
         if sys == "baseline_plain_rag":

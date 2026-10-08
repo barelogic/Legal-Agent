@@ -36,6 +36,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--hf-limit", type=int, default=50)
     ap.add_argument("--top-k", type=int, default=4)
     ap.add_argument("--gold-per-doc", type=int, default=2)
+    ap.add_argument("--gold-max-docs", type=int, default=30)
+    ap.add_argument("--corpus", default="auto",
+                    choices=("auto", "registry", "processed"),
+                    help="auto (default): data/processed/ when built, else "
+                         "seeds+HF registry. One corpus feeds gold AND the "
+                         "queries split so metrics.json is comparable.")
+    ap.add_argument("--rebuild-queries", action="store_true",
+                    help="force rebuild of queries_resolved.jsonl (default: "
+                         "rebuild only when missing or older than "
+                         "data/processed/docs.jsonl)")
     ap.add_argument("--out", default="eval/results")
     args = ap.parse_args(argv)
 
@@ -43,14 +53,29 @@ def main(argv: list[str] | None = None) -> int:
     out = root / args.out
     out.mkdir(parents=True, exist_ok=True)
 
-    stats = build_corpus(out_dir=root / "eval" / "datasets", hf_limit=args.hf_limit)
-    docs, chunks = corpus_registry(hf_limit=args.hf_limit)
+    from eval.score_queries import try_load_processed_corpus
+
+    pdocs, pchunks = try_load_processed_corpus()
+    use_processed = (args.corpus == "processed" or
+                     (args.corpus == "auto" and bool(pdocs and pchunks)))
+    if args.corpus == "processed" and not (pdocs and pchunks):
+        print("no data/processed/; run corpus/build_corpus.py first")
+        return 2
+    if use_processed:
+        docs, chunks = pdocs, pchunks
+        corpus_source = "processed(data/processed/)"
+        stats = None
+    else:
+        stats = build_corpus(out_dir=root / "eval" / "datasets", hf_limit=args.hf_limit)
+        docs, chunks = corpus_registry(hf_limit=args.hf_limit)
+        corpus_source = f"registry(seeds+hf_limit={args.hf_limit})"
     gold_path = build_gold(chunks, out_path=root / "eval" / "datasets" / "gold.jsonl",
-                           per_doc=args.gold_per_doc)
+                           per_doc=args.gold_per_doc, max_docs=args.gold_max_docs)
     rows = load_gold(gold_path)
 
     answers_by_system = {
-        s: [run_system(s, r["question"], docs, chunks, top_k=args.top_k) for r in rows]
+        s: [run_system(s, r["question"], docs, chunks, top_k=args.top_k,
+                       workflow=r.get("workflow", "chat")) for r in rows]
         for s in SYSTEMS
     }
     retrieval = retrieval_report(rows, docs, chunks, systems=SYSTEMS, top_k=args.top_k)
@@ -62,14 +87,23 @@ def main(argv: list[str] | None = None) -> int:
     ablations = run_ablations(rows, docs, chunks)
 
     try:
-        from eval.score_queries import load_processed_corpus, load_resolved, score_queries
+        from eval.score_queries import load_resolved, score_queries
 
         import eval.build_queries as _bq
 
-        _bq.main([])
-        pdocs, pchunks = load_processed_corpus()
-        queries = score_queries(pdocs, pchunks, top_k=args.top_k)
-        queries["holdout_qids"] = [r["qid"] for r in load_resolved(holdout=True)]
+        if not (pdocs and pchunks):
+            queries = {"skipped": "no data/processed/; queries split needs "
+                                  "corpus/build_corpus.py output"}
+        else:
+            resolved_p = root / "eval" / "datasets" / "queries_resolved.jsonl"
+            docs_p = root / "data" / "processed" / "docs.jsonl"
+            stale = (not resolved_p.is_file() or
+                     (docs_p.is_file() and
+                      docs_p.stat().st_mtime > resolved_p.stat().st_mtime))
+            if args.rebuild_queries or stale:
+                _bq.main([])
+            queries = score_queries(pdocs, pchunks, top_k=args.top_k)
+            queries["holdout_qids"] = [r["qid"] for r in load_resolved(holdout=True)]
     except Exception as e:
         queries = {"error": f"{e.__class__.__name__}: {e}"}
 
@@ -83,12 +117,14 @@ def main(argv: list[str] | None = None) -> int:
         mm = (ans.trace or {}).get("llm_mode")
         if mm:
             plain_modes.add(str(mm).split("(")[0])
+    n_real = sum(1 for d in docs.values() if getattr(d, "source_url", None))
     metrics = {
         "corpus": {
-            "num_docs": stats.num_docs,
-            "num_chunks": stats.num_chunks,
-            "num_real_with_source_url": stats.num_real,
-            "num_demo_without_source_url": stats.num_demo,
+            "source": corpus_source,
+            "num_docs": len(docs),
+            "num_chunks": len(chunks),
+            "num_real_with_source_url": n_real,
+            "num_demo_without_source_url": len(docs) - n_real,
             "hf_limit": args.hf_limit,
         },
         "gold": {"n": len(rows), "answerable": sum(1 for r in rows if r.get("answerable"))},
@@ -126,7 +162,7 @@ def render_tables(m: dict) -> str:
              f"judge_mode: {m.get('judge', {}).get('judge_mode', '?')} | "
              f"plain_rag_llm: {m.get('plain_rag_llm_mode', '?')}")
     c = m["corpus"]
-    L.append(f"Corpus: {c['num_docs']} docs / {c['num_chunks']} chunks "
+    L.append(f"Corpus: {c.get('source', '?')} — {c['num_docs']} docs / {c['num_chunks']} chunks "
              f"({c['num_real_with_source_url']} real with source_url, "
              f"{c['num_demo_without_source_url']} demo). "
              f"Gold: {m['gold']['n']} ({m['gold']['answerable']} answerable).")
@@ -165,7 +201,9 @@ def render_tables(m: dict) -> str:
             L.append(f"- {name}: {a}")
     L.append("\n## Hand-built queries (tunable split; holdout excluded)")
     q = m.get("queries", {})
-    if "error" in q:
+    if "skipped" in q:
+        L.append(f"queries section skipped: {q['skipped']}")
+    elif "error" in q:
         L.append(f"queries section failed: {q['error']}")
     else:
         L.append(f"n={q['n']} ({q['n_answerable']} answerable), "

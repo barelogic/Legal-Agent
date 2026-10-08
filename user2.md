@@ -1,7 +1,38 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08 evening — merged to `origin/main@d82e17f`; live Ollama numbers reported.
+Updated: 2026-10-08 night — corrections sweep done (all user2 items); live refresh running.
+
+## Corrections sweep (this session, base `d82e17f` — all user2 items fixed)
+
+- **Two-corpora mix (unified):** `run_all.py --corpus auto` (default) uses
+  `data/processed/` for gold AND the queries split when built, else
+  seeds+HF registry; `metrics.json` logs `corpus.source`. Gold now 37 rows
+  from the real corpus. `queries_resolved.jsonl` rebuilds only when missing
+  or older than `data/processed/docs.jsonl` (`--rebuild-queries` forces);
+  `score_queries` skips gracefully instead of assert-crashing seeds-only runs.
+- **Metrics:** symmetric token-F1 entailment/usefulness (old recall inflated
+  rambling answers); no self-grading on empty spans; dead counter removed;
+  `trap_def` logged (flag vs unanswerable-fallback); denominator convention
+  documented; MRR confirmed first-relevant (comment, no change);
+  `workflow` passed through everywhere; injected ablation row labeled with
+  its own retriever; dense leg detected by import-availability (no private
+  peeking); claim cap (`MAX_ATOMIC_CLAIMS=12`) audited via `n_claims_raw`.
+- **Gold/queries:** stub spans extended to ≥4 content tokens; span check
+  normalized (case/space); q023 span replaced with a complete single-hit
+  clause; `doc_ids` path covered by a processed-corpus test.
+- **Corpus nits:** manifest `synthetic` from builder provenance (not slug);
+  `section_map.json` regenerated with `herebyrepealed` normalized + flagged
+  (`quote_normalized`), 0 artifacts, 3 rows.
+- **Docs:** `eval/README.md` rewritten (5 systems, real corpus, 0-5 judge,
+  live-Ollama modes); `.env.example` documents `JUDGE_MODEL`.
+- Suite: **99 passed** (89 + 10 new `test_corrections.py`); schemas clean.
+- Mock recalibration (F1 + q023): tunable usefulness lower across the board
+  (e.g. 1.600 pipeline) — scale got stricter, deltas preserved. Live full
+  refresh running in background; table updates when it lands.
+- Not mine (for P1/user3): core 500s/dead-fields/gate-parity, UI payload
+  drift/crashes — untouched. `min_coverage`/`RERANK_MIN_SCORE` still
+  nonexistent (sweep still blocked); 10-trap expansion still queued.
 
 ## P1 — LIVE numbers, local Ollama `llama3.1:8b` (dev/tunable split, n=30, 25 answerable)
 

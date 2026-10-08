@@ -34,14 +34,26 @@ def get_judge_model() -> str:
     return judge
 
 
-def _overlap(a: str, b: str) -> float:
-    ta = set(re.findall(r"[a-z0-9]+", a.lower())) - {
+def _content_tokens(s: str) -> set[str]:
+    return set(re.findall(r"[a-z0-9]+", s.lower())) - {
         "a", "an", "and", "are", "as", "at", "be", "but", "by", "for",
         "from", "has", "have", "in", "is", "it", "its", "of", "on", "or",
         "that", "the", "to", "was", "were", "will", "with",
     }
-    tb = set(re.findall(r"[a-z0-9]+", b.lower()))
-    return len(ta & tb) / max(1, len(ta))
+
+
+def _overlap(a: str, b: str) -> float:
+    """Symmetric token F1 between gold span and answer text.
+
+    The old asymmetric recall (|gold & ans| / |gold|) scored 1.0 whenever a
+    short gold span sat inside a rambling answer; F1 penalizes that.
+    """
+    ta, tb = _content_tokens(a), _content_tokens(b)
+    if not ta or not tb:
+        return 0.0
+    inter = len(ta & tb)
+    prec, rec = inter / len(tb), inter / len(ta)
+    return 2 * prec * rec / max(1e-9, prec + rec)
 
 
 def _gemini_judge(prompt: str, model: str) -> str | None:
@@ -86,10 +98,13 @@ def judge_answers(answers_by_system: dict[str, list], rows: list[dict]) -> dict:
                 use = 5.0 if not row.get("answerable") else 0.0
                 ent = 1.0 if not row.get("answerable") else 0.0
             else:
-                gold = row.get("answer_span", "") or " ".join(
-                    c.text for c in ans.claims[:2]
-                )
+                gold = row.get("answer_span", "")
                 if not row.get("answerable"):
+                    use = 0.0
+                    ent = 0.0
+                elif not gold.strip():
+                    # Answerable but no gold span: scoring against the
+                    # answer's own claims would be circular self-grading.
                     use = 0.0
                     ent = 0.0
                 else:

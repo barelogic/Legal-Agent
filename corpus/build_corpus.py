@@ -152,15 +152,21 @@ def main(argv: list[str] | None = None) -> int:
 
     root = Path(__file__).resolve().parent.parent
     raw = root / "data" / "raw"
+    builders = (("pdf", False, build_pdf_docs),
+                ("section", False, build_section_docs),
+                ("hf", False, build_hf_docs),
+                ("synthetic", True, build_synthetic_docs))
     all_docs: list[Doc] = []
     all_chunks: list[Chunk] = []
-    for builder in (build_pdf_docs, build_section_docs, build_hf_docs,
-                    build_synthetic_docs):
+    synthetic_ids: set[str] = set()
+    for _name, is_synth, builder in builders:
         try:
             docs, chunks = builder(raw)
         except FileNotFoundError as e:
             print(f"skip ({e}); run fetch scripts first")
             continue
+        if is_synth:
+            synthetic_ids.update(d.doc_id for d in docs)
         all_docs.extend(docs)
         all_chunks.extend(chunks)
     if not all_docs:
@@ -170,7 +176,9 @@ def main(argv: list[str] | None = None) -> int:
     manifest = [{
         "doc_id": d.doc_id, "title": d.title, "doc_type": d.doc_type,
         "citation": d.citation, "source_url": d.source_url, "year": d.year,
-        "synthetic": d.doc_id.startswith("synth_"),
+        # Provenance tracked from the builder above, never inferred from
+        # the doc_id slug (slugs are allowed to change).
+        "synthetic": d.doc_id in synthetic_ids,
         "num_chunks": sum(1 for c in all_chunks if c.doc_id == d.doc_id),
     } for d in all_docs]
     (root / "corpus" / "manifest.json").write_text(

@@ -49,12 +49,24 @@ def derive_question(chunk: Chunk, max_words: int = 8) -> str:
     return " ".join(seen) if seen else chunk.text[:60]
 
 
-def answer_span_for(chunk: Chunk, max_len: int = 180) -> str:
-    """First sentence (or head slice); always a verbatim substring."""
+def _content_len(s: str) -> int:
+    return len(_content_tokens(s))
+
+
+def answer_span_for(chunk: Chunk, max_len: int = 180, min_tokens: int = 4) -> str:
+    """First sentence (or head slice); always a verbatim substring.
+
+    Skips stub openers: a first sentence with fewer than min_tokens
+    content tokens is extended with following sentences (still verbatim).
+    """
     parts = chunk.text.split(". ")
     first = parts[0].strip()
     if re.search(r"\b[vV]$", first) and len(parts) > 1:
         first = (first + ". " + parts[1]).strip()
+    i = 2
+    while _content_len(first) < min_tokens and i <= len(parts):
+        first = (first + ". " + parts[i - 1]).strip()
+        i += 1
     if len(first) > max_len:
         first = first[:max_len].rsplit(" ", 1)[0]
     return first
