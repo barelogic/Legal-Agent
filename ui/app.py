@@ -1,0 +1,276 @@
+"""Streamlit UI: grounded legal assistant (judge-friendly).
+
+Screens: (1) sidebar — upload documents (POST /ingest) + case-set picker;
+(2) tabs for Chat / Draft / Review / Research; (3) result view with
+clickable [cN] evidence chips opening a source side panel.
+
+Only the API base URL has to change to switch mock -> real backend
+(env API_BASE_URL or the sidebar field). Every fact renders from verified
+claims with quote + chunk link; refusals and missing-info stay prominent.
+"""
+
+from __future__ import annotations
+
+import streamlit as st
+
+from contracts.schemas import Answer
+from ui import api_client
+from ui.render import (
+    citation_to_markdown,
+    claim_markers,
+    docs_by_id,
+    dropped_claims,
+    highlight_quote,
+    source_label,
+    split_text_markers,
+    status_badge,
+    verified_claims,
+)
+
+WORKFLOWS = ["chat", "draft", "review", "research"]
+DOC_TYPES = ["statute", "judgment", "case_file"]
+PRESETS: dict[str, str] = {
+    "chat": "bail in non-bailable offences?",
+    "draft": "Draft a bail prayer using only the sources for FIR 0123/2024.",
+    "review": "FIR 0123/2024 — is recovery pending, did the accused join investigation?",
+    "research": "What did Satender Kumar Antil v. CBI (2022) hold on arrest?",
+}
+
+
+def _base() -> str:
+    return st.session_state.get("api_base", api_client.base_url())
+
+
+def _sidebar() -> tuple[dict, dict]:
+    st.sidebar.title("Backend")
+    st.sidebar.text_input("API base URL (mock → real switch)", value=_base(), key="api_base")
+    base = _base()
+    try:
+        health = api_client.get_health(base)
+        st.sidebar.success(f"● OK · {health.get('docs')} docs, {health.get('chunks')} chunks")
+    except RuntimeError as e:
+        st.sidebar.error(str(e))
+        st.sidebar.caption("Start backend: `python -m uvicorn api.main:app`")
+    try:
+        docs = api_client.list_docs(base)
+    except RuntimeError as e:
+        st.sidebar.warning(str(e))
+        docs = []
+    by_id = docs_by_id(docs)
+
+    st.sidebar.header("1 · Documents & case set")
+    with st.sidebar.expander("📤 Upload (POST /ingest)", expanded=False):
+        ups = st.file_uploader("PDF or TXT", type=["pdf", "txt"], accept_multiple_files=True)
+        dtype = st.selectbox("doc_type", DOC_TYPES, index=2)
+        if st.button("Ingest", disabled=not ups):
+            ok, fail = 0, []
+            with st.spinner("Ingesting…"):
+                for f in ups or []:
+                    try:
+                        res = api_client.post_ingest(f.name, f.getvalue(), dtype, base=base)
+                        ok += 1
+                    except RuntimeError as e:
+                        fail.append(f"{f.name}: {e}")
+            if ok:
+                st.sidebar.success(f"Ingested {ok} file(s)")
+            for m in fail:
+                st.sidebar.error(m)
+            st.rerun()
+    st.sidebar.caption("Corpus")
+    for d in docs:
+        extra = f" · {d.citation}" if d.citation else ""
+        st.sidebar.caption(f"`{d.doc_id}` — {d.title} ({d.doc_type}){extra}")
+    known = [d.doc_id for d in docs]
+    current = [c for c in st.session_state.get("case_set", []) if c in known]
+    st.sidebar.multiselect(
+        "Case set (doc_ids filter, empty = all)",
+        known,
+        default=current,
+        key="case_set",
+    )
+    cols = st.sidebar.columns(2)
+    if cols[0].button("All docs"):
+        st.session_state["case_set"] = []
+        st.rerun()
+    top_k = cols[1].number_input("top_k", 1, 10, 4, step=1)
+    st.session_state["top_k"] = int(top_k)
+    return by_id, {"docs": docs}
+
+
+def _ask_tab(workflow: str, by_id: dict) -> None:
+    st.text_area("Question", key=f"q-{workflow}", height=80,
+                placeholder=PRESETS[workflow])
+    c1, c2 = st.columns([1, 3])
+    if c1.button("Ask", key=f"ask-{workflow}", type="primary"):
+        q = st.session_state.get(f"q-{workflow}", "").strip()
+        if not q:
+            st.warning("Type a question first.")
+            return
+        try:
+            with st.spinner("Retrieving → claiming → verifying…"):
+                ans = api_client.post_answer(
+                    q, workflow=workflow,  # type: ignore[arg-type]
+                    top_k=st.session_state.get("top_k", 4),
+                    doc_ids=st.session_state.get("case_set") or None,
+                    base=_base(),
+                )
+            st.session_state.setdefault("answers", {})[workflow] = ans.model_dump()
+            st.session_state.pop("selected", None)
+        except RuntimeError as e:
+            st.error(str(e), icon="⛔")
+    if c2.button("Fill example", key=f"preset-{workflow}"):
+        st.session_state[f"q-{workflow}"] = PRESETS[workflow]
+        st.rerun()
+    saved = (st.session_state.get("answers") or {}).get(workflow)
+    if saved:
+        st.divider()
+        _render_result(Answer(**saved), by_id, workflow)
+
+
+def _render_claim_text_with_chips(answer: Answer, workflow: str) -> None:
+    """Render Answer.text; each [cN] marker gets a clickable chip button."""
+    markers = claim_markers(answer.text)
+    st.markdown(f"_Answer text (workflow `{answer.workflow}`):_")
+    buf = ""
+    chips: list[str] = []
+
+    def flush(t: str) -> None:
+        if t.strip():
+            st.markdown(t)
+
+    for seg, cid in split_text_markers(answer.text):
+        if cid is None:
+            buf += seg
+        else:
+            buf += f" **[{cid}]**"
+            chips.append(cid)
+    flush(buf)
+    if chips:
+        st.caption("Evidence chips — click to inspect the source:")
+        cols = st.columns(min(len(chips), 8))
+        for i, cid in enumerate(chips):
+            if cols[i % len(cols)].button(f"[{cid}]", key=f"chip-{workflow}-{cid}-{i}"):
+                st.session_state["selected"] = {"workflow": workflow, "claim_id": cid}
+
+
+def _render_source_panel(answer: Answer, by_id: dict, workflow: str) -> None:
+    sel = st.session_state.get("selected")
+    with st.container(border=True):
+        st.subheader("Source panel")
+        if not sel or sel.get("workflow") != workflow:
+            st.caption("Click an evidence chip ([cN]) to inspect its source chunk.")
+            return
+        cid = sel["claim_id"]
+        claim = next((c for c in answer.claims if c.claim_id == cid), None)
+        if claim is None:
+            st.warning(f"Claim `{cid}` not in this Answer.")
+            return
+        st.markdown(f"**[{claim.claim_id}] {status_badge(claim.status)}**")
+        st.markdown(claim.text)
+        st.markdown(f"> {claim.quote}")
+        if claim.verifier_note:
+            st.caption(f"Verifier: {claim.verifier_note}")
+        for chunk_id in claim.chunk_ids:
+            st.divider()
+            try:
+                chunk = api_client.get_source(chunk_id, base=_base())
+                doc = by_id.get(chunk.doc_id)
+                st.markdown(f"**{doc.title if doc else chunk.doc_id}**" + (f" · p.{chunk.page}" if chunk.page else ""))
+                if chunk.section_label:
+                    st.caption(chunk.section_label)
+                if doc and doc.source_url:
+                    st.markdown(f"[open source]({doc.source_url})")
+                else:
+                    st.caption("Local doc — no external link.")
+                st.markdown(
+                    highlight_quote(chunk.text, claim.quote),
+                    unsafe_allow_html=True,
+                )
+            except RuntimeError:
+                from ui.render import doc_id_of_chunk
+
+                doc = by_id.get(doc_id_of_chunk(chunk_id))
+                st.caption(f"📄 {source_label(chunk_id, by_id)}")
+                if doc and doc.source_url:
+                    st.markdown(f"[open source]({doc.source_url})")
+                else:
+                    st.caption("Local doc — no external link.")
+                st.markdown(f"> {claim.quote}")
+                st.caption(
+                    "Full chunk fetch unavailable "
+                    f"(GET /sources/{chunk_id} not on mock backend) — "
+                    "showing the verified quote instead."
+                )
+        if st.button("Close panel", key=f"close-{workflow}"):
+            st.session_state.pop("selected", None)
+            st.rerun()
+
+
+def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
+    if answer.refused:
+        st.error(f"⛔ Refused: {answer.text}", icon="⛔")
+        if answer.refusal_reason:
+            st.markdown(f"**Reason:** {answer.refusal_reason}")
+        with st.expander("Trace (debug)"):
+            st.json(answer.trace)
+        bad = dropped_claims(answer)
+        if bad:
+            with st.expander(f"Dropped claims audit ({len(bad)})"):
+                for c in bad:
+                    st.caption(f"`{c.claim_id}` [{c.status}] {c.text}")
+        return
+
+    if answer.missing_info:
+        st.warning("⚠️ Missing information needed for a complete answer", icon="⚠️")
+        for m in answer.missing_info:
+            searched = ", ".join(f"`{d}`" for d in m.searched_in) or "_nothing searched_"
+            st.markdown(f"- **{m.field}** — {m.why_needed} (searched: {searched})")
+    if answer.contradictions:
+        st.error("Contradictions found between sources", icon="🚨")
+        for k in answer.contradictions:
+            st.markdown(f"- `{k.claim_a}` vs `{k.claim_b}`: {k.description}")
+
+    left, right = st.columns([3, 2])
+    with left:
+        _render_claim_text_with_chips(answer, workflow)
+        st.subheader("Claims")
+        rows = [
+            {
+                "claim": c.claim_id,
+                "status": status_badge(c.status),
+                "text": c.text,
+                "chunks": ", ".join(c.chunk_ids),
+            }
+            for c in answer.claims
+        ]
+        st.dataframe(rows, use_container_width=True, hide_index=True)
+        if answer.citations:
+            st.subheader("Sources")
+            for cite in answer.citations:
+                st.markdown(f"- {citation_to_markdown(cite, by_id)}")
+        good = verified_claims(answer)
+        st.caption(f"{len(good)} verified / {len(answer.claims)} total claims.")
+        if answer.trace:
+            with st.expander("Trace (debug)"):
+                st.json(answer.trace)
+    with right:
+        _render_source_panel(answer, by_id, workflow)
+
+
+def main() -> None:
+    st.set_page_config(page_title="Grounded Legal Assistant", layout="wide")
+    st.title("⚖️ Grounded Legal Assistant")
+    st.caption(
+        "Every fact links to its source chunk + verbatim quote. "
+        "Unverifiable claims are dropped; empty results refuse honestly."
+    )
+    by_id, _ = _sidebar()
+    st.header("2 · Ask by workflow")
+    tabs = st.tabs(["Chat", "Draft", "Review", "Research"])
+    for tab, wf in zip(tabs, WORKFLOWS):
+        with tab:
+            _ask_tab(wf, by_id)
+
+
+if __name__ == "__main__":
+    main()

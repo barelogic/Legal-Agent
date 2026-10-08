@@ -1,0 +1,42 @@
+{
+  "template_id": "bail_application",
+  "title": "Bail Application (India — regular/anticipatory)",
+  "jurisdiction": "India",
+  "description": "Application seeking release on bail before a Session Court or High Court. Provision numbers are NOT pre-filled: the applicable bail provision must be filled from the retrieved sources for the case.",
+  "required_fields": [
+    {"name": "court", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Court seized of the matter (e.g. Court of Session at __ / High Court at __)."},
+    {"name": "applicant_name", "field_type": "string", "required": true, "typically_found_in": "case_file", "description": "Full name of the accused/applicant."},
+    {"name": "applicant_address", "field_type": "address", "required": true, "typically_found_in": "case_file", "description": "Permanent address (relevant to flight-risk assessment)."},
+    {"name": "case_number", "field_type": "string", "required": true, "typically_found_in": "case_file", "description": "Case/crime number as registered."},
+    {"name": "fir_number", "field_type": "string", "required": true, "typically_found_in": "case_file", "description": "FIR number."},
+    {"name": "fir_date", "field_type": "date", "required": true, "typically_found_in": "case_file", "description": "Date of FIR registration."},
+    {"name": "police_station", "field_type": "string", "required": true, "typically_found_in": "case_file", "description": "Police station, with district and state."},
+    {"name": "provisions_invoked", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Offence provisions as recorded in the FIR/chargesheet. Fill verbatim from sources; never invent."},
+    {"name": "bail_provision", "field_type": "string", "required": true, "typically_found_in": "statute", "description": "Bail provision relied upon (regular/anticipatory). Fill from statute sources; never pre-filled here."},
+    {"name": "date_of_arrest", "field_type": "date", "required": true, "typically_found_in": "case_file", "description": "Date of arrest; used to compute custody undergone."},
+    {"name": "custody_days", "field_type": "integer", "required": false, "typically_found_in": "case_file", "description": "Total custody undergone till the application date."},
+    {"name": "stage_of_proceedings", "field_type": "enum", "required": true, "typically_found_in": "case_file", "description": "One of: investigation / chargesheet / cognizance / charge / trial."},
+    {"name": "facts_chronology", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Facts in chronological order, one per paragraph."},
+    {"name": "grounds_for_bail", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Grounds relied upon (e.g. cooperation with investigation, parity, custody length). Each ground must be traceable to a source."},
+    {"name": "criminal_antecedents", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Prior FIRs with number, police station, provisions and status (pending/acquitted/convicted); 'none' if nil. Mandatory disclosure."},
+    {"name": "previous_bail_applications", "field_type": "list_string", "required": true, "typically_found_in": "court_record", "description": "Court, case number and outcome of each prior bail plea."},
+    {"name": "coercive_processes", "field_type": "string", "required": true, "typically_found_in": "case_file", "description": "Whether any non-bailable warrant was issued or applicant declared proclaimed offender."},
+    {"name": "prayer", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Relief sought: release on bail on stated terms with surety."},
+    {"name": "surety_details", "field_type": "string", "required": false, "typically_found_in": "user_input", "description": "Personal bond amount and surety offered."},
+    {"name": "applicant_counsel", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Counsel name, enrolment number and signature block."},
+    {"name": "verification_place_date", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Place and date of verification with deponent signature."}
+  ],
+  "boilerplate_structure": [
+    {"order": 1, "section": "cause_title", "fixed_text": "IN THE COURT OF {court} — {applicant_name} (Applicant/Accused) Versus State (Respondent). Bail application in {case_number} arising from {fir_number} dated {fir_date}, {police_station}.", "placeholders": ["court", "applicant_name", "case_number", "fir_number", "fir_date", "police_station"]},
+    {"order": 2, "section": "case_details", "fixed_text": "A table of case details: FIR number and date; police station, district and state; provisions invoked; maximum punishment prescribed; date of arrest; custody undergone; stage of proceedings.", "placeholders": ["fir_number", "fir_date", "police_station", "provisions_invoked", "date_of_arrest", "custody_days", "stage_of_proceedings"]},
+    {"order": 3, "section": "facts", "fixed_text": "Numbered paragraphs setting out the facts in chronological sequence, confined to what the record supports.", "placeholders": ["facts_chronology"]},
+    {"order": 4, "section": "grounds", "fixed_text": "Numbered grounds for bail, each tied to a cited source (cooperation, parity, custody length, etc.). No bare legal assertion without a record basis.", "placeholders": ["grounds_for_bail", "bail_provision"]},
+    {"order": 5, "section": "antecedents_and_history", "fixed_text": "Full disclosure of criminal antecedents, previous bail applications with outcomes, and coercive processes (if any).", "placeholders": ["criminal_antecedents", "previous_bail_applications", "coercive_processes"]},
+    {"order": 6, "section": "prayer", "fixed_text": "It is therefore prayed that the applicant be released on bail in the above case on such terms as this Hon'ble Court deems fit.", "placeholders": ["prayer", "surety_details"]},
+    {"order": 7, "section": "verification", "fixed_text": "Verification by the deponent with place and date, supported by a separate affidavit.", "placeholders": ["verification_place_date", "applicant_counsel"]}
+  ],
+  "notes": [
+    "Disclosure of antecedents, prior bail pleas and coercive processes is mandatory practice (see docs/templates_sources.md); omission risks dismissal.",
+    "Provision numbers always come from the FIR/chargesheet and statute sources, never from model memory."
+  ]
+}
