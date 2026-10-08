@@ -56,8 +56,10 @@ class GeminiClient:
 
     def __init__(self, model: str | None = None, api_key: str | None = None,
                  temperature: float | None = None) -> None:
+        from generation.config import get_llm_temperature
+
         self.model = model or os.getenv("LLM_MODEL", "gemini-2.0-flash")
-        self.temperature = temperature
+        self.temperature = get_llm_temperature() if temperature is None else temperature
         self.api_key = api_key if api_key is not None else (
             os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
         )
@@ -89,11 +91,15 @@ class OpenAICompatibleClient:
         model: str | None = None,
         api_key: str | None = None,
         base_url: str | None = None,
+        temperature: float | None = None,
     ) -> None:
+        from generation.config import get_llm_temperature
+
         self.model = model or os.getenv("LLM_MODEL", "gpt-4o-mini")
         self.api_key = api_key if api_key is not None else os.getenv("OPENAI_API_KEY", "")
         self.base_url = (base_url or os.getenv("OPENAI_BASE_URL",
                                                  "https://api.openai.com/v1")).rstrip("/")
+        self.temperature = get_llm_temperature() if temperature is None else temperature
         if not self.api_key:
             raise RuntimeError("OPENAI_API_KEY is not set")
 
@@ -104,7 +110,7 @@ class OpenAICompatibleClient:
             json={
                 "model": self.model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0,
+                "temperature": self.temperature,
             },
             timeout=60,
         )

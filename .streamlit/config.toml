@@ -1,0 +1,14 @@
+[theme]
+base = "dark"
+
+# Core palette — clean, professional, court-document feel (dark mode)
+primaryColor        = "#1D4ED8"   # blue-700 — buttons, focus rings, active tabs
+backgroundColor     = "#0F172A"   # slate-900 — page background
+secondaryBackgroundColor = "#1E293B"   # slate-800 — sidebar, cards
+textColor           = "#F1F5F9"   # slate-100
+
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false

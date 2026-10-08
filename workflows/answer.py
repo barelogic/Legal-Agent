@@ -15,7 +15,7 @@ from typing import Literal
 
 from contracts.schemas import Answer, Chunk, Claim, MissingInfo
 from generation.claims import generate_claims
-from retrieval.store import Registry, _content_tokens
+from retrieval.store import Registry, _content_tokens, doc_routing
 from verify import flags as vflags
 from verify.citations import build_citations
 from verify.judge import is_mock_client, make_judge_client
@@ -118,8 +118,16 @@ def answer_from_chunks(
     ms = int((time.perf_counter() - t0) * 1000)
     verify4 = {k: flagset.get(k, True) for k in (
         "verify_text", "entailment", "citation_gate", "regenerate")}
+    from generation.config import get_llm_provider
+
     trace = {
         "retrieved_chunk_ids": [c.chunk_id for c in retrieved],
+        "routing": doc_routing(question),  # None normally; "judgment" routes case-law
+        "llm": {
+            "provider": get_llm_provider(),
+            "model": getattr(llm, "model", type(llm).__name__),
+            "temperature": getattr(llm, "temperature", "mock (deterministic)"),
+        },
         "dropped": len(failed),
         "dropped_reasons": [f"{c.claim_id}: {c.verifier_note}" for c in failed],
         "fallbacks": fallbacks,

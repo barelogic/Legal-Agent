@@ -50,6 +50,8 @@ def post_answer(
     doc_ids: list[str] | None = None,
     precheck: bool = False,
     provided_values: dict[str, str] | None = None,
+    draft_type: str | None = None,
+    doc_types: list[str] | None = None,
     base: str = DEFAULT_BASE_URL,
     timeout: float = 60.0,
 ) -> Answer:
@@ -70,6 +72,10 @@ def post_answer(
         payload["precheck"] = True
     if provided_values:
         payload["provided_values"] = provided_values
+    if draft_type:
+        payload["draft_type"] = draft_type
+    if doc_types:
+        payload["doc_types"] = doc_types
     try:
         r = httpx.post(f"{base.rstrip('/')}/answer", json=payload, timeout=timeout)
         r.raise_for_status()
