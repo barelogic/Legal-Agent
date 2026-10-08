@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-08, at `bdaae51` (hybrid gate; main at `939d943`, pushed to origin).
+Updated: 2026-10-08, at `0c23f62` (verifier hardening; main at `3bd71b2`, pushed to origin).
 
 ## Landed on main (all pushed to origin)
 
@@ -55,7 +55,7 @@ Report: `/home/frost/correctionsfile.md` (main @ `a49f55c`). Both core items fix
   traps, if any, will now score as answered — check against your intended
   refusal P/R in `eval/metrics_grounded.py`.
 
-## Verifier hardening (2026-10-08, on `core/phase-1`, unmerged)
+## Verifier hardening (2026-10-08, on `core/phase-1`, merged `3bd71b2`, pushed)
 
 Closes the quote-smuggling hole: `verify_claim` checked only that
 `quote` is verbatim in a cited chunk while `claim.text` (model-written)
