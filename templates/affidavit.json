@@ -1,0 +1,43 @@
+{
+  "template_id": "affidavit",
+  "title": "Affidavit (general court affidavit)",
+  "jurisdiction": "India",
+  "description": "Sworn statement of facts filed under Order XIX CPC (and Supreme Court Rules where applicable). States facts only, never legal argument.",
+  "required_fields": [
+    {"name": "court", "field_type": "string", "required": true, "typically_found_in": "court_record", "description": "Court name exactly as in the main proceeding."},
+    {"name": "case_number", "field_type": "string", "required": true, "typically_found_in": "court_record", "description": "Case number exactly as in the main proceeding."},
+    {"name": "parties", "field_type": "string", "required": true, "typically_found_in": "court_record", "description": "Party array matching the main proceeding exactly."},
+    {"name": "deponent_name", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Full name of the deponent."},
+    {"name": "deponent_relation", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Father's/husband's name of the deponent."},
+    {"name": "deponent_age", "field_type": "integer", "required": true, "typically_found_in": "user_input", "description": "Age of the deponent."},
+    {"name": "deponent_occupation", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Occupation of the deponent."},
+    {"name": "deponent_address", "field_type": "address", "required": true, "typically_found_in": "user_input", "description": "Residential address of the deponent."},
+    {"name": "capacity", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Capacity in which the affidavit is sworn."},
+    {"name": "averments", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Numbered paragraphs, each confined to a distinct portion of the subject, in chronological order, facts only."},
+    {"name": "knowledge_source_per_para", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "For each averment: whether from personal knowledge or information/belief, with the source (record/person) for the latter."},
+    {"name": "purpose", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Relief supported or purpose for which the affidavit is sworn."},
+    {"name": "verification_knowledge_paras", "field_type": "list_string", "required": true, "typically_found_in": "user_input", "description": "Paragraph numbers true to the deponent's own knowledge."},
+    {"name": "verification_belief_paras", "field_type": "list_string", "required": true, "typically_found_in": "user_input", "description": "Paragraph numbers true to information and belief, with sources."},
+    {"name": "verification_place_date", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Place and date of verification."},
+    {"name": "attesting_authority", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Notary / Oath Commissioner / other authority competent to administer oaths, with seal and register number."},
+    {"name": "annexures", "field_type": "list_string", "required": false, "typically_found_in": "case_file", "description": "Documents referred to in the body: annexure and page numbers, paginated and attested."}
+  ],
+  "boilerplate_structure": [
+    {"order": 1, "section": "cause_title", "fixed_text": "BEFORE THE {court} — {case_number} — {parties}.", "placeholders": ["court", "case_number", "parties"]},
+    {"order": 2, "section": "deponent_identification", "fixed_text": "I, {deponent_name} S/D/W/o {deponent_relation}, aged {deponent_age}, {deponent_occupation}, residing at {deponent_address}, do hereby solemnly affirm and declare in the capacity of {capacity} as under.", "placeholders": ["deponent_name", "deponent_relation", "deponent_age", "deponent_occupation", "deponent_address", "capacity"]},
+    {"order": 3, "section": "averments", "fixed_text": "Numbered paragraphs: {averments}. Each paragraph states its source: {knowledge_source_per_para}. Purpose: {purpose}.", "placeholders": ["averments", "knowledge_source_per_para", "purpose"]},
+    {"order": 4, "section": "verification", "fixed_text": "I verify that paragraphs {verification_knowledge_paras} are true to my own knowledge and paragraphs {verification_belief_paras} are true to my information and belief (sources stated above), and nothing material is concealed. Verified at {verification_place_date}.", "placeholders": ["verification_knowledge_paras", "verification_belief_paras", "verification_place_date"]},
+    {"order": 5, "section": "attestation", "fixed_text": "Sworn/affirmed before me by the deponent, identified to my satisfaction. {attesting_authority} (seal, date, register number). Annexures: {annexures}.", "placeholders": ["attesting_authority", "annexures"]}
+  ],
+  "formatting_rules": [
+    "Confine to facts the deponent can prove from personal knowledge (except interlocutory applications); state the source for information/belief.",
+    "Chronological sequence of dates and events; one distinct portion of the subject per paragraph.",
+    "Pages numbered consecutively; divided into numbered paragraphs; all numbers including dates in figures.",
+    "No mere reproduction of pleadings and no legal grounds/arguments — the court may strike such parts.",
+    "Annexed documents referenced with annexure and page numbers."
+  ],
+  "notes": [
+    "Blanket verification of the whole affidavit as 'true to knowledge' when some paras are on information is a common ground for return.",
+    "Missing age/address, unmarked annexures, or attestation predating the facts deposed to are common defects."
+  ]
+}

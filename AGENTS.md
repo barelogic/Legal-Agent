@@ -5,13 +5,28 @@ be traceable to a retrieved source. A single fabricated fact fails us.
 
 ## Who works here
 
-| User | Area | Branch | Worktree |
+<| User | Area | Branch | Worktree |
 | --- | --- | --- | --- |
 | Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `core/phase-1` | `/home/frost/legal-agent-core` |
 | user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `eval/data-eval` | `/home/frost/legal-agent-eval` |
 | user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` | `/home/frost/legal-agent` (main tree) |
 
 All commits share one git username, so **branches — not authors — separate work**.
+`main` takes merges, not direct feature work.
+
+## UI ↔ backend contract
+
+- UI (`ui/`) talks to the backend over HTTP only, parsing responses into
+  the frozen Pydantic models. The mock→real switch is exactly one value:
+  the API base URL (`API_BASE_URL` env or the sidebar field, default
+  `http://localhost:8000`).
+- UI must degrade honestly when a route is absent: show the verified
+  `quote` from the `Answer` and say the full-chunk fetch is unavailable.
+  Never fabricate chunk text.
+- Landed in core: `GET /sources/{chunk_id}` → `Chunk` (200) / 404 when
+  unknown. Response shape is the frozen `Chunk` model; no schema change.
+- Render rule: verified `quote`s from `Answer.claims` are the primary display;
+  `/sources/{chunk_id}` is context-only (full chunk around a quote).
 
 ## Shared-checkout protocol (3 users, 1 machine)
 
@@ -45,7 +60,14 @@ All commits share one git username, so **branches — not authors — separate w
 
 - Small typed modules with docstrings; one tiny pytest per module.
 - Heavy ML deps stay optional with graceful lexical fallback (E2E over polish).
-- New top-level dirs (`eval/`, `ui/`) are fine; do not restructure existing ones.
+- New top-level dirs (`eval/`, `ui/`, `templates/`, `docs/`) are fine;
+  do not restructure existing ones.
+- `templates/*.json` shape: `template_id, title, jurisdiction, description,`
+  `required_fields[]` (`name, field_type, required, typically_found_in,`
+  `description`), `boilerplate_structure[]` (`order, section, fixed_text,`
+  `placeholders`). Never hardcode statutory section numbers in templates —
+  provisions stay fill-in fields; a test enforces zero `Section <digits>`.
+  Template structure sources go in `docs/templates_sources.md` with URLs.
 - Do not commit runtime artifacts: `data/processed/`, `data/uploads/`,
   `data/chroma/`, `.venv/`, `__pycache__/`.
 
