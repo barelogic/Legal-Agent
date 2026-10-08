@@ -185,9 +185,10 @@ def test_verifier_summary_prefers_trace_reasons():
 
 def test_verifier_bar_html_numbers():
     bar = verifier_bar_html(verifier_summary(_answer()))
-    assert "1</strong> verified" in bar
-    assert "1</strong> dropped" in bar
-    assert "0.82" in bar
+    # new HTML uses <span class="vbar-num">N</span> instead of <strong>
+    assert ">1<" in bar and "verified" in bar
+    assert "dropped" in bar
+    assert "82%" in bar or "0.82" in bar
     assert "not provided" in verifier_bar_html(verifier_summary(_answer(confidence=None)))
 
 

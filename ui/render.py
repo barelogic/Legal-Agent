@@ -18,12 +18,25 @@ from contracts.schemas import Answer, Citation, Claim, Contradiction, Doc
 MARKER_RE = re.compile(r"\[(c\d+)\]")
 
 STATUS_BADGE: dict[str, str] = {
-    "verified": "✅ verified",
+    "verified":    "✅ verified",
     "unsupported": "⚠️ unsupported",
-    "removed": "⛔ removed",
-    "unverified": "❔ unverified",
+    "removed":     "⛔ removed",
+    "unverified":  "❔ unverified",
 }
 
+# Inline HTML badges (used in tables and chips only — not in prose)
+_BADGE_HTML: dict[str, str] = {
+    "verified":    '<span class="badge badge-v">✅ Verified</span>',
+    "unsupported": '<span class="badge badge-u">⚠️ Unsupported</span>',
+    "removed":     '<span class="badge badge-r">⛔ Removed</span>',
+    "unverified":  '<span class="badge badge-n">❔ Unverified</span>',
+}
+
+# Kept for backward compat — app.py imports USER_VALUE_CSS (now empty string)
+USER_VALUE_CSS = ""
+
+
+# ─── Doc / chunk helpers ─────────────────────────────────────────────────────
 
 def docs_by_id(docs: list[Doc]) -> dict[str, Doc]:
     """Index Docs by doc_id for source resolution."""
@@ -54,6 +67,8 @@ def source_label(chunk_id: str, docs: dict[str, Doc]) -> str:
     return f"{' — '.join(bits)} · `{chunk_id}`"
 
 
+# ─── Claim helpers ───────────────────────────────────────────────────────────
+
 def claim_to_markdown(claim: Claim, docs: dict[str, Doc]) -> str:
     """Render ONE verified claim with its quote + source links. No source → raise."""
     validate_claim_renderable(claim)
@@ -70,17 +85,6 @@ def claim_to_markdown(claim: Claim, docs: dict[str, Doc]) -> str:
     if claim.verifier_note:
         lines.append(f"\n_Verifier: {claim.verifier_note}_")
     return "\n".join(lines)
-
-
-def citation_to_markdown(cite: Citation, docs: dict[str, Doc]) -> str:
-    """Render one citation; unresolved citations are flagged, never linked."""
-    if not cite.resolved or not cite.doc_id or cite.doc_id not in docs:
-        return f"`{cite.raw}` → ⚠️ unresolved (not in registry)"
-    doc = docs[cite.doc_id]
-    if doc.source_url:
-        return f"`{cite.raw}` → [{doc.title}]({doc.source_url})"
-    cited = f" ({doc.citation})" if doc.citation else ""
-    return f"`{cite.raw}` → {doc.title}{cited} · `{doc.doc_id}` (local doc)"
 
 
 def verified_claims(answer: Answer) -> list[Claim]:
@@ -142,61 +146,121 @@ def status_badge(status: str) -> str:
     return STATUS_BADGE.get(status, status)
 
 
-# Distinct visual lane for user-supplied values (question text, draft field
-# inputs, case-set choices). Amber/brown — never the green/blue used for
-# sourced facts — plus an explicit "user-provided" label so a judge can
-# never mistake typed input for a retrieved fact.
-USER_VALUE_CSS = (
-    "<style>"
-    ".user-provided { background: #fef3c7; color: #92400e;"
-    " border: 1px solid #f59e0b; border-radius: 6px;"
-    " padding: 2px 8px; font-size: 0.85em; }"
-    ".user-provided-tag { background: #92400e; color: #fff8e6;"
-    " border-radius: 4px; padding: 0 6px; margin-right: 6px;"
-    " font-size: 0.75em; font-weight: 600; }"
-    ".sourced { text-decoration: underline dotted #16a34a 2px;"
-    " text-underline-offset: 3px; cursor: help; }"
-    ".missing-chip { background: #fee2e2; color: #991b1b;"
-    " border: 1px solid #ef4444; border-radius: 6px;"
-    " padding: 2px 8px; font-size: 0.85em; font-weight: 600; }"
-    "</style>"
-)
+def status_badge_html(status: str) -> str:
+    """Inline HTML badge for use in tables / panels."""
+    return _BADGE_HTML.get(
+        status,
+        f'<span class="badge badge-n">{html.escape(status)}</span>',
+    )
 
+
+# ─── Citations ───────────────────────────────────────────────────────────────
+
+def citation_to_markdown(cite: Citation, docs: dict[str, Doc]) -> str:
+    """Render one citation; unresolved citations are flagged, never linked."""
+    if not cite.resolved or not cite.doc_id or cite.doc_id not in docs:
+        return f"`{cite.raw}` → ⚠️ unresolved (not in registry)"
+    doc = docs[cite.doc_id]
+    if doc.source_url:
+        return f"`{cite.raw}` → [{doc.title}]({doc.source_url})"
+    cited = f" ({doc.citation})" if doc.citation else ""
+    return f"`{cite.raw}` → {doc.title}{cited} · `{doc.doc_id}` (local doc)"
+
+
+# ─── Verifier summary ────────────────────────────────────────────────────────
+
+def verifier_summary(answer: Answer) -> dict:
+    """Verifier numbers for the summary bar, with provenance labels."""
+    good = verified_claims(answer)
+    bad = dropped_claims(answer)
+    trace = answer.trace if isinstance(answer.trace, dict) else {}
+    traced = trace.get("dropped")
+    if isinstance(traced, int) and traced >= 0:
+        dropped_n, source = traced, "trace"
+    else:
+        dropped_n, source = len(bad), "claims"
+    trace_reasons = trace.get("dropped_reasons")
+    if isinstance(trace_reasons, list) and trace_reasons:
+        reasons = [str(r) for r in trace_reasons]
+        reasons_source = "backend trace"
+    else:
+        reasons = [
+            f"`{c.claim_id}` [{c.status}]"
+            + (f" — {c.verifier_note}" if c.verifier_note else "")
+            for c in bad
+        ]
+        reasons_source = "claim status/verifier notes (trace has no per-claim reasons)"
+    return {
+        "verified_n": len(good),
+        "dropped_n": dropped_n,
+        "dropped_source": source,
+        "dropped_reasons": reasons,
+        "reasons_source": reasons_source,
+        "confidence": answer.confidence,
+    }
+
+
+def verifier_bar_html(summary: dict) -> str:
+    """Verifier row: counts + colour-coded confidence gauge."""
+    conf = summary["confidence"]
+    if conf is not None:
+        pct = int(conf * 100)
+        colour = "#16A34A" if pct >= 70 else "#F59E0B" if pct >= 40 else "#DC2626"
+        gauge = (
+            f'<div class="gauge-wrap">'
+            f'<div class="gauge-track">'
+            f'<div class="gauge-fill" style="width:{pct}%;background:{colour}"></div>'
+            f'</div>'
+            f'<span class="gauge-pct" style="color:{colour}">{pct}%</span>'
+            f'</div>'
+        )
+    else:
+        gauge = '<span style="color:#9CA3AF;font-size:0.78rem">not provided</span>'
+
+    return (
+        f'<div style="display:flex;align-items:center;gap:24px;'
+        f'padding:10px 16px;background:#F9FAFB;border:1px solid #E5E7EB;'
+        f'border-radius:8px;font-size:0.82rem;color:#374151">'
+        f'<span>✅ <strong>{summary["verified_n"]}</strong> verified</span>'
+        f'<span style="color:#E5E7EB">|</span>'
+        f'<span>⛔ <strong>{summary["dropped_n"]}</strong> dropped</span>'
+        f'<span style="color:#E5E7EB">|</span>'
+        f'<span style="flex:1;display:flex;align-items:center;gap:10px">'
+        f'<span style="color:#6B7280">Confidence</span>{gauge}</span>'
+        f'</div>'
+    )
+
+
+# ─── User-provided / missing chips ───────────────────────────────────────────
 
 def user_value_html(value: str) -> str:
-    """Wrap a user-supplied value in a visually distinct badge.
-
-    HTML-escaped; always carries the ``user-provided`` label. Pure function
-    so tests pin the distinction without Streamlit.
-    """
+    """Wrap a user-supplied value in a visually distinct amber badge."""
     return (
-        '<span class="user-provided"><span class="user-provided-tag">'
-        "user-provided</span>"
+        '<span class="user-provided"><span class="user-provided-tag">user-provided</span>'
         f"{html.escape(value)}</span>"
     )
 
 
 def user_provided_chip(value: str) -> str:
-    """Inline ``[USER-PROVIDED: value]`` marker in the user-value style.
-
-    Used in draft views for values the user typed into the missing-info
-    panel. Never a sourced fact: the label says who provided it.
-    """
+    """Inline [USER-PROVIDED: value] marker in amber style."""
     return (
-        '<span class="user-provided"><span class="user-provided-tag">'
-        "user-provided</span>"
+        '<span class="user-provided"><span class="user-provided-tag">user-provided</span>'
         f"[USER-PROVIDED: {html.escape(value)}]</span>"
     )
 
 
 def missing_chip(field: str) -> str:
-    """Inline red ``[MISSING: field]`` placeholder for unsourced items."""
+    """Inline red [MISSING: field] placeholder."""
     return f'<span class="missing-chip">[MISSING: {html.escape(field)}]</span>'
 
 
-# ---------------------------------------------------------------------------
-# Templates + precheck (pure; templates/*.json are UI-owned content)
-# ---------------------------------------------------------------------------
+def copy_button_html(text: str, label: str = "📋 Copy") -> str:
+    """Clipboard copy button."""
+    safe = html.escape(text, quote=True).replace("'", "&#39;")
+    return f"<button class='clip-btn' onclick=\"_clip('{safe}',this)\">{label}</button>"
+
+
+# ─── Templates + precheck ────────────────────────────────────────────────────
 
 TEMPLATE_IDS = ("bail_application", "legal_notice", "affidavit")
 
@@ -233,33 +297,48 @@ def _field_flagged(norm_name: str, missing: list) -> object | None:
 
 
 def precheck_summary(answer: Answer, template: dict) -> dict:
-    """Draft readiness derived client-side from an Answer + template.
-
-    ``sourced`` = required field the backend did NOT flag in
-    ``missing_info``. ``unconfirmed`` is True when the backend returned no
-    missing-info list at all — then nothing was flagged, so callers must
-    label the count as unconfirmed, never as proven.
-    """
+    """Draft readiness derived from trace.field_status (backend) or client-side fallback."""
     fields = required_fields(template)
     rows: list[dict] = []
-    for f in fields:
-        m = _field_flagged(_norm(f["name"]), answer.missing_info)
-        rows.append(
-            {
+    
+    trace = answer.trace if isinstance(answer.trace, dict) else {}
+    field_status = trace.get("field_status")
+    
+    if isinstance(field_status, dict):
+        # Backend-provided field_status is available
+        for f in fields:
+            status = field_status.get(f["name"], "missing")
+            # find matching missing_info for why_needed
+            m = next((m for m in answer.missing_info if m.field == f["name"]), None)
+            rows.append({
+                "name": f["name"],
+                "description": f.get("description", ""),
+                "status": status,
+                "why_needed": m.why_needed if m is not None else "",
+                "searched_in": list(m.searched_in) if m is not None else [],
+            })
+        unconfirmed = False
+        sourced_n = sum(1 for r in rows if r["status"] in ("sourced", "user_provided"))
+    else:
+        # Client-side fallback derivation
+        for f in fields:
+            m = _field_flagged(_norm(f["name"]), answer.missing_info)
+            rows.append({
                 "name": f["name"],
                 "description": f.get("description", ""),
                 "status": "missing" if m is not None else "sourced",
                 "why_needed": m.why_needed if m is not None else "",
                 "searched_in": list(m.searched_in) if m is not None else [],
-            }
-        )
-    sourced_n = sum(1 for r in rows if r["status"] == "sourced")
+            })
+        unconfirmed = not answer.missing_info
+        sourced_n = sum(1 for r in rows if r["status"] == "sourced")
+        
     return {
         "template_id": template.get("template_id", ""),
         "total": len(rows),
         "sourced_n": sourced_n,
         "missing_n": len(rows) - sourced_n,
-        "unconfirmed": not answer.missing_info,
+        "unconfirmed": unconfirmed,
         "rows": rows,
     }
 
@@ -271,23 +350,14 @@ def confidence_text(answer: Answer) -> str:
     return f"confidence: {answer.confidence:.2f}"
 
 
-# ---------------------------------------------------------------------------
-# Draft view (pure HTML; Streamlit chips stay as buttons in app.py)
-# ---------------------------------------------------------------------------
+# ─── Draft HTML ──────────────────────────────────────────────────────────────
 
 def _claims_by_id(answer: Answer) -> dict[str, Claim]:
     return {c.claim_id: c for c in answer.claims}
 
 
 def draft_html(answer: Answer) -> str:
-    """Render Answer.text as HTML: sourced runs underlined w/ quote tooltip.
-
-    Text preceding each ``[cN]`` marker is wrapped in
-    ``<span class="sourced" title="verbatim quote">`` — hover previews the
-    quote, and app.py adds a clickable chip button per marker. Runs with no
-    following marker, or markers with no renderable claim, stay plain:
-    never underlined without a quote to show.
-    """
+    """Render Answer.text as HTML: sourced runs underlined w/ quote tooltip."""
     by_id = _claims_by_id(answer)
     out: list[str] = []
     buf = ""
@@ -322,14 +392,10 @@ def draft_html(answer: Answer) -> str:
 
 
 def still_needed_html(answer: Answer, provided_values: dict[str, str]) -> str:
-    """Red ``[MISSING: field]`` placeholders / amber user values, as HTML.
-
-    One entry per ``missing_info`` item: a red placeholder when the user
-    has not supplied the field, an amber ``[USER-PROVIDED: …]`` chip when
-    they have. Empty string when the backend flagged nothing.
-    """
+    """Red placeholders / amber user-values for missing fields."""
     bits: list[str] = []
-    for m in answer.missing_info:
+    real_missing = [m for m in answer.missing_info if m.field != "exhaustive coverage"]
+    for m in real_missing:
         val = (provided_values or {}).get(m.field, "").strip()
         if val:
             bits.append(f"{missing_chip(m.field)} → {user_provided_chip(val)}")
@@ -338,76 +404,10 @@ def still_needed_html(answer: Answer, provided_values: dict[str, str]) -> str:
     return "<br>".join(bits)
 
 
-# ---------------------------------------------------------------------------
-# Verifier summary bar (trace-first, claims fallback — labelled either way)
-# ---------------------------------------------------------------------------
-
-def verifier_summary(answer: Answer) -> dict:
-    """Verifier numbers for the summary bar, with provenance labels.
-
-    ``dropped_n`` prefers ``trace["dropped"]`` (backend count) and falls
-    back to the client-side dropped-claims count. ``dropped_reasons``
-    prefers ``trace["dropped_reasons"]`` (backend per-claim notes, present
-    since core's verifier hardening) and falls back to claim ``status`` +
-    ``verifier_note`` — the label always says which source was used.
-    """
-    good = verified_claims(answer)
-    bad = dropped_claims(answer)
-    trace = answer.trace if isinstance(answer.trace, dict) else {}
-    traced = trace.get("dropped")
-    if isinstance(traced, int) and traced >= 0:
-        dropped_n, source = traced, "trace"
-    else:
-        dropped_n, source = len(bad), "claims"
-    trace_reasons = trace.get("dropped_reasons")
-    if isinstance(trace_reasons, list) and trace_reasons:
-        reasons = [str(r) for r in trace_reasons]
-        reasons_source = "backend trace"
-    else:
-        reasons = [
-            f"`{c.claim_id}` [{c.status}]"
-            + (f" — {c.verifier_note}" if c.verifier_note else "")
-            for c in bad
-        ]
-        reasons_source = "claim status/verifier notes (trace has no per-claim reasons)"
-    return {
-        "verified_n": len(good),
-        "dropped_n": dropped_n,
-        "dropped_source": source,
-        "dropped_reasons": reasons,
-        "reasons_source": reasons_source,
-        "confidence": answer.confidence,
-    }
-
-
-def verifier_bar_html(summary: dict) -> str:
-    """One-line HTML summary bar from :func:`verifier_summary`."""
-    conf = (
-        f"{summary['confidence']:.2f}"
-        if summary["confidence"] is not None
-        else "not provided"
-    )
-    return (
-        f"✅ <strong>{summary['verified_n']}</strong> verified &nbsp;·&nbsp; "
-        f"⛔ <strong>{summary['dropped_n']}</strong> dropped "
-        f"(counted from {summary['dropped_source']}) &nbsp;·&nbsp; "
-        f"confidence: <strong>{conf}</strong>"
-    )
-
-
-# ---------------------------------------------------------------------------
-# DOCX export (screen parity: draft + still-needed + sources appendix)
-# ---------------------------------------------------------------------------
+# ─── DOCX export ─────────────────────────────────────────────────────────────
 
 def draft_segments(answer: Answer, provided_values: dict[str, str]) -> dict:
-    """Segment the draft body for screen-parity rendering.
-
-    Returns ``{"body": [...], "still_needed": [...]}`` where each paragraph
-    is a list of ``(text, kind)`` tuples, kind in
-    ``text | marker | missing | user``. The HTML draft view and the DOCX
-    export both consume this, so the export contains exactly what the
-    screen shows — no extra text.
-    """
+    """Segment the draft body for screen-parity rendering."""
     body: list[list[tuple[str, str]]] = []
     for line in answer.text.splitlines():
         if not line.strip():
@@ -441,14 +441,7 @@ def export_draft_docx(
     provided_values: dict[str, str],
     docs: dict[str, Doc],
 ) -> bytes:
-    """Build the draft DOCX: question, draft, still-needed, Sources appendix.
-
-    Sourced sentences carry literal ``[cN]`` markers; placeholders are
-    highlighted (red = missing, yellow = user-provided). The appendix lists
-    every claim with status, and per chunk: chunk_id, Doc title, citation,
-    verbatim quote. Lazy ``python-docx`` import: raises RuntimeError with
-    an install hint when the optional dep is absent.
-    """
+    """Build the draft DOCX: question, draft, still-needed, Sources appendix."""
     try:
         from docx import Document
         from docx.enum.text import WD_COLOR_INDEX
@@ -500,15 +493,12 @@ def export_draft_docx(
             doc.add_paragraph(f"\u201c{c.quote}\u201d")
 
     from io import BytesIO
-
     buf = BytesIO()
     doc.save(buf)
     return buf.getvalue()
 
 
-# ---------------------------------------------------------------------------
-# Contradiction side-by-side (word diff; fetch stays in app.py for honesty)
-# ---------------------------------------------------------------------------
+# ─── Contradiction diff ───────────────────────────────────────────────────────
 
 def diff_sides(a: str, b: str) -> tuple[str, str]:
     """Word-level diff of two chunk texts; differing tokens get <mark>."""
@@ -526,11 +516,7 @@ def diff_sides(a: str, b: str) -> tuple[str, str]:
 
 
 def contradiction_view_model(contra: Contradiction, fetched: dict[str, object | None]) -> dict:
-    """View model for one contradiction: texts (or None when unfetched).
-
-    ``fetched`` maps chunk_id → Chunk-like (``.text``) or None on failure.
-    Pure: app.py does the ``/sources`` fetching, this decides what to show.
-    """
+    """View model for one contradiction: texts (or None when unfetched)."""
     return {
         "description": contra.description,
         "chunk_a": contra.claim_a,

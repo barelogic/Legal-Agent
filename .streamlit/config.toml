@@ -1,0 +1,14 @@
+[theme]
+base = "light"
+
+# Core palette — clean, professional, court-document feel
+primaryColor        = "#1D4ED8"   # blue-700 — buttons, focus rings, active tabs
+backgroundColor     = "#F9FAFB"   # gray-50 — page background
+secondaryBackgroundColor = "#FFFFFF"   # sidebar, cards
+textColor           = "#111827"   # gray-900
+
+font = "sans serif"
+
+[server]
+headless = true
+enableCORS = false

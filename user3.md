@@ -79,3 +79,16 @@ Updated: 2026-10-08, at `7ee25ff` (synced to `origin/main` `3bd71b2`, core verif
 - Core: if `missing_info` / `confidence` / `contradictions` /
   `provided_values` ever get backend support, my views consume them with
   no UI changes; until then the honest-degrade captions stay.
+
+## UI Redesign & Updates (on `ui/streamlit`, pending merge)
+
+- **Backend Draft Payload:** The UI now passes `draft_type` (template ID) and `doc_types` filter (via the sidebar) on `POST /answer` calls.
+- **Draft Precheck parsing:** Switched to consuming `trace.field_status` (when the backend supplies it) for draft precheck summaries, gracefully falling back to the client-side derivation if missing.
+- **List-style Answers:** Excluded the "exhaustive coverage" pseudo-missing field from the standard Missing Info panel and `still_needed_html`, instead rendering it clearly as a "List View" info banner.
+- **Fallbacks & Protections Surfaced:** Added a banner to explicitly show `trace.backend` and `trace.fallbacks` on all screens so protections remain visible.
+- **Compare View:** Added a new 📊 Compare tab that loads and renders `eval/results/compare.jsonl`, displaying our grounded pipeline against `baseline_no_verify`.
+- **Docs & Pitch Rule:** Cleaned up prohibited phrases. Authored `docs/writeup.md` containing the 4-minute demo script and strictly adhering to the mandated pitch wording ("Every sentence is a claim whose key facts and quote are checked against the source...").
+
+## Flags for other areas (not mine to fix)
+- Core: The UI is now fully prepared for `trace.field_status` and `draft_type`. 
+- Eval: `eval/results/compare.jsonl` is needed for the 📊 Compare tab to render properly; currently safely degrading with a "Not found" info banner if omitted.
