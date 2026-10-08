@@ -177,6 +177,12 @@ def test_verifier_summary_falls_back_to_claims():
     assert s["dropped_n"] == 1 and s["dropped_source"] == "claims"
 
 
+def test_verifier_summary_prefers_trace_reasons():
+    s = verifier_summary(_answer(trace={"dropped": 1, "dropped_reasons": ["c2: entailment failed"]}))
+    assert s["dropped_reasons"] == ["c2: entailment failed"]
+    assert s["reasons_source"] == "backend trace"
+
+
 def test_verifier_bar_html_numbers():
     bar = verifier_bar_html(verifier_summary(_answer()))
     assert "1</strong> verified" in bar

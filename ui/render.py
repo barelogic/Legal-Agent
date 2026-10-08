@@ -346,28 +346,36 @@ def verifier_summary(answer: Answer) -> dict:
     """Verifier numbers for the summary bar, with provenance labels.
 
     ``dropped_n`` prefers ``trace["dropped"]`` (backend count) and falls
-    back to the client-side dropped-claims count. ``dropped_reasons`` always
-    come from claim ``status`` + ``verifier_note`` — the backend trace
-    carries no per-claim reasons, and the label says so.
+    back to the client-side dropped-claims count. ``dropped_reasons``
+    prefers ``trace["dropped_reasons"]`` (backend per-claim notes, present
+    since core's verifier hardening) and falls back to claim ``status`` +
+    ``verifier_note`` — the label always says which source was used.
     """
     good = verified_claims(answer)
     bad = dropped_claims(answer)
-    traced = answer.trace.get("dropped") if isinstance(answer.trace, dict) else None
+    trace = answer.trace if isinstance(answer.trace, dict) else {}
+    traced = trace.get("dropped")
     if isinstance(traced, int) and traced >= 0:
         dropped_n, source = traced, "trace"
     else:
         dropped_n, source = len(bad), "claims"
-    reasons = [
-        f"`{c.claim_id}` [{c.status}]"
-        + (f" — {c.verifier_note}" if c.verifier_note else "")
-        for c in bad
-    ]
+    trace_reasons = trace.get("dropped_reasons")
+    if isinstance(trace_reasons, list) and trace_reasons:
+        reasons = [str(r) for r in trace_reasons]
+        reasons_source = "backend trace"
+    else:
+        reasons = [
+            f"`{c.claim_id}` [{c.status}]"
+            + (f" — {c.verifier_note}" if c.verifier_note else "")
+            for c in bad
+        ]
+        reasons_source = "claim status/verifier notes (trace has no per-claim reasons)"
     return {
         "verified_n": len(good),
         "dropped_n": dropped_n,
         "dropped_source": source,
         "dropped_reasons": reasons,
-        "reasons_source": "claim status/verifier notes (trace has no per-claim reasons)",
+        "reasons_source": reasons_source,
         "confidence": answer.confidence,
     }
 
