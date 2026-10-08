@@ -1,0 +1,4 @@
+# generated artifacts (rebuilt by eval/run_all.py -- one command)
+results/
+datasets/
+__pycache__/

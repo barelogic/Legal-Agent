@@ -1,0 +1,66 @@
+{
+ "coverage": "repeal-cross-references-only",
+ "note": "Full old-new section correspondence requires the official comparison charts (BPR&D/MHA), unreachable from this environment; see attempted sources. Repeal rows are verbatim from MHA PDFs.",
+ "attempted_official_chart_sources": [
+  {
+   "source": "BPR&D comparative charts (bprd.nic.in)",
+   "url": "https://bprd.nic.in/",
+   "result": "unreachable from this environment (https timeout; http 302 then timeout)"
+  },
+  {
+   "source": "MHA New Criminal Laws page tables",
+   "url": "https://www.mha.gov.in/en/commoncontent/new-criminal-laws",
+   "result": "reachable; hosts only the 3 bare-Act PDFs, no correspondence table"
+  },
+  {
+   "source": "NCRB Sankalan portal",
+   "url": "https://ncrb.gov.in/uploads/SankalanPortal/Index.html",
+   "result": "reachable; hosts Act/Gazette PDFs, no correspondence table found"
+  },
+  {
+   "source": "eGazette",
+   "url": "https://egazette.nic.in/",
+   "result": "unreachable (timeout)"
+  },
+  {
+   "source": "Supreme Court portal / eSCR",
+   "url": "https://supremecourt.gov.in/",
+   "result": "unreachable (timeout)"
+  }
+ ],
+ "rows": [
+  {
+   "old_act": "Code of Criminal Procedure, 1973",
+   "old_section": null,
+   "new_act": "bharatiya_nagarik_suraksha_sanhita",
+   "new_section": "531",
+   "relation": "repealed-by",
+   "quote": "531. (1) The Code of Criminal Procedure, 1973 is hereby repealed",
+   "quote_normalized": false,
+   "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250884_2_english_01042024.pdf",
+   "origin": "repeal-section"
+  },
+  {
+   "old_act": "Indian Penal Code",
+   "old_section": null,
+   "new_act": "bharatiya_nyaya_sanhita",
+   "new_section": "358",
+   "relation": "repealed-by",
+   "quote": "358. (1) The Indian Penal Code is hereby repealed",
+   "quote_normalized": true,
+   "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250883_english_01042024.pdf",
+   "origin": "repeal-section"
+  },
+  {
+   "old_act": "Indian Evidence Act, 1872",
+   "old_section": null,
+   "new_act": "bharatiya_sakshya_adhiniyam",
+   "new_section": "170",
+   "relation": "repealed-by",
+   "quote": "170. (1) The Indian Evidence Act, 1872 is hereby repealed",
+   "quote_normalized": false,
+   "source_url": "https://www.mha.gov.in/sites/default/files/2024-04/250882_english_01042024_0.pdf",
+   "origin": "repeal-section"
+  }
+ ]
+}

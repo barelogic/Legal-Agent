@@ -1,0 +1,122 @@
+[
+  {
+    "url": "https://www.mha.gov.in/sites/default/files/2024-04/250883_english_01042024.pdf",
+    "path": "/home/frost/legal-agent-eval/data/raw/statutes/the_bharatiya_nyaya_sanhita_2023.pdf",
+    "sha256": "c9da896e7a16c481a46235789f74f545b7a9ed7f3a5c8049d0b1b9252c6731f4",
+    "bytes": 1324200,
+    "accessed": "2026-10-08",
+    "title": "The Bharatiya Nyaya Sanhita, 2023"
+  },
+  {
+    "url": "https://www.mha.gov.in/sites/default/files/2024-04/250882_english_01042024_0.pdf",
+    "path": "/home/frost/legal-agent-eval/data/raw/statutes/the_bharatiya_sakshya_adhiniyam_2023.pdf",
+    "sha256": "13e2b6eb66add222c7262ccaa0b08d58e48ca22cdf0953f6541123ef039de239",
+    "bytes": 670370,
+    "accessed": "2026-10-08",
+    "title": "The Bharatiya Sakshya Adhiniyam, 2023"
+  },
+  {
+    "url": "https://www.mha.gov.in/sites/default/files/2024-04/250884_2_english_01042024.pdf",
+    "path": "/home/frost/legal-agent-eval/data/raw/statutes/the_bharatiya_nagarik_suraksha_sanhita_2023.pdf",
+    "sha256": "5e60e2afe30d0fe7eca4f8126301146b76c86a444e690581f81eb564843517fe",
+    "bytes": 2033181,
+    "accessed": "2026-10-08",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546201",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s92_c157ea48.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.92",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546200",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s91_c7939aa9.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.91",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546566",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s483_0abe29c2.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.483",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546571",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s488_978d66ff.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.488",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546670",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s492_3e9875d7.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.492",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546156",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s47_84ad41ba.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.47",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546668",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s481_a0778486.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.481",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546563",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s478_6c56b21d.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.478",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546568",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s485_55c44d85.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.485",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546570",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s487_77f8c66f.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.487",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546158",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s49_8804acc4.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.49",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546246",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s139_fca4f55f.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.139",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546564",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s479_c0874ba2.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.479",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/546565",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nagarik_suraksha_sanhita_2_s480_d1cd36f9.txt",
+    "title": "The Bharatiya Nagarik Suraksha Sanhita, 2023 s.480",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/545493",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_nyaya_sanhita_2023_s1_6720ad33.txt",
+    "title": "The Bharatiya Nyaya Sanhita, 2023 s.1",
+    "accessed": "2026-10-08"
+  },
+  {
+    "url": "https://indiacode.gov.in/handle/123456789/545895",
+    "path": "/home/frost/legal-agent-eval/data/raw/india_code/the_bharatiya_sakshya_adhiniyam_2023_s1_c302c676.txt",
+    "title": "The Bharatiya Sakshya Adhiniyam, 2023 s.1",
+    "accessed": "2026-10-08"
+  }
+]

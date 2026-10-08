@@ -1,0 +1,40 @@
+{
+  "template_id": "legal_notice",
+  "title": "Legal Notice (general, with statutory variants)",
+  "jurisdiction": "India",
+  "description": "Formal demand-and-deadline notice preceding legal action. Statutory provision numbers are fields to fill from sources, never pre-filled.",
+  "required_fields": [
+    {"name": "notice_date", "field_type": "date", "required": true, "typically_found_in": "user_input", "description": "Date of the notice."},
+    {"name": "sender_name_address", "field_type": "address", "required": true, "typically_found_in": "user_input", "description": "Full name, description and address of the person on whose behalf the notice is sent."},
+    {"name": "recipient_name_address", "field_type": "address", "required": true, "typically_found_in": "user_input", "description": "Full name and address of the addressee."},
+    {"name": "subject", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "One-line subject (e.g. demand towards unpaid invoice)."},
+    {"name": "facts_chronology", "field_type": "list_string", "required": true, "typically_found_in": "case_file", "description": "Clear chronological account of events, free of exaggeration."},
+    {"name": "legal_grounds", "field_type": "string", "required": true, "typically_found_in": "statute", "description": "Legal basis with the statutory provision cited. Fill the provision from sources."},
+    {"name": "demand_relief", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Exactly what the recipient must do (pay a sum, vacate, replace, cease)."},
+    {"name": "compliance_days", "field_type": "integer", "required": true, "typically_found_in": "user_input", "description": "Reasonable compliance period in days (commonly 15 or 30; statutory variants fix this — see conditional fields)."},
+    {"name": "consequences", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Legal action that will follow non-compliance, limited to what can lawfully be pursued."},
+    {"name": "signatory", "field_type": "string", "required": true, "typically_found_in": "user_input", "description": "Signature of sender/advocate with enrolment details where applicable; retain a signed copy and dispatch proof."}
+  ],
+  "conditional_fields": [
+    {"name": "s80_authority", "field_type": "address", "required": false, "typically_found_in": "user_input", "description": "For suits against government/public officer: authority sued. Suit only after the statutory waiting period from service (fill period from sources; do not assume); plaint must state notice was delivered."},
+    {"name": "s138_cheque_no", "field_type": "string", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: cheque number and date."},
+    {"name": "s138_amount", "field_type": "amount", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: cheque amount."},
+    {"name": "s138_return_memo_date", "field_type": "date", "required": false, "typically_found_in": "case_file", "description": "For cheque dishonour: bank return-memo date. Notice must be sent within the statutory window running from it (fill from sources; do not assume)."},
+    {"name": "s138_pay_window_days", "field_type": "integer", "required": false, "typically_found_in": "statute", "description": "Drawer payment window after notice receipt (statutory; fill from sources, do not assume)."},
+    {"name": "tenant_premises", "field_type": "address", "required": false, "typically_found_in": "case_file", "description": "For eviction: premises address with lease date, rent and ground (expiry/arrears/breach)."},
+    {"name": "consumer_invoice", "field_type": "string", "required": false, "typically_found_in": "case_file", "description": "For consumer deficiency: invoice number, date, amount and defect description."}
+  ],
+  "boilerplate_structure": [
+    {"order": 1, "section": "letterhead_date", "fixed_text": "Dated notice on the sender's (or advocate's) letterhead with enrolment details where applicable.", "placeholders": ["notice_date"]},
+    {"order": 2, "section": "parties", "fixed_text": "From: {sender_name_address} — To: {recipient_name_address} — Subject: {subject}.", "placeholders": ["sender_name_address", "recipient_name_address", "subject"]},
+    {"order": 3, "section": "facts", "fixed_text": "Numbered chronological facts: {facts_chronology}.", "placeholders": ["facts_chronology"]},
+    {"order": 4, "section": "legal_grounds", "fixed_text": "The legal basis with the provision cited: {legal_grounds}.", "placeholders": ["legal_grounds"]},
+    {"order": 5, "section": "demand", "fixed_text": "You are called upon to {demand_relief} within {compliance_days} days of receipt of this notice.", "placeholders": ["demand_relief", "compliance_days"]},
+    {"order": 6, "section": "warning", "fixed_text": "Failing which the sender shall initiate {consequences} at your risk as to costs and consequences.", "placeholders": ["consequences"]},
+    {"order": 7, "section": "signature", "fixed_text": "Signed: {signatory}. A copy of this notice has been retained.", "placeholders": ["signatory"]}
+  ],
+  "notes": [
+    "Prefer registered post with acknowledgment due for proof of delivery; supplement by email/WhatsApp where delivery can be demonstrated.",
+    "Statutory clocks (government-suit waiting period, cheque-notice window) are filled from the statute sources for the matter, never assumed."
+  ]
+}

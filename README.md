@@ -20,7 +20,7 @@ source .venv/bin/activate
 source .venv/bin/activate.fish
 cp .env.example .env   # LLM_PROVIDER=mock | gemini | openai_compatible
 python -m pip install -r requirements.txt
-python -m pytest -q              # 44 tests
+python -m pytest -q              # 152 tests
 python -m uvicorn api.main:app --reload
 curl -X POST localhost:8000/answer \
   -H 'Content-Type: application/json' \

@@ -1,0 +1,182 @@
+[
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/BRHC010021012020.json",
+  "case_title": "CR. MISC./1505/2020 of HARI OM KUMAR Vs The State of Bihar",
+  "court": "Patna High Court",
+  "decision_date": "2020-01-14",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010021012020_1_2020-01-14.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/BRHC010024412020.json",
+  "case_title": "CR. MISC./3024/2020 of CHANDAN KUMAR Vs THE STATE OF BIHAR",
+  "court": "Patna High Court",
+  "decision_date": "2020-03-20",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010024412020_1_2020-03-20.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/BRHC010122842020.json",
+  "case_title": "CR. MISC./8546/2020 of PAWAN KUMAR Vs THE STATE OF BIHAR",
+  "court": "Patna High Court",
+  "decision_date": "2020-03-03",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010122842020_1_2020-03-03.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/BRHC010074742020.json",
+  "case_title": "CR. MISC./4749/2020 of PRABHAT KUMAR MAHTO @ PINTU MAHTO Vs The State of Bihar",
+  "court": "Patna High Court",
+  "decision_date": "2020-01-23",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=10_8/bench=patnahcucisdb94/BRHC010074742020_1_2020-01-23.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/JHHC010015262020.json",
+  "case_title": "B.A./516/2020 of BITTU KUMAR ALIAS PAWAN ALIAS PAWAN KUMAR GUPTA ALIAS BITTU KUMAR GUPTA ALIAS BITTU GUPTA ALIAS BIT Vs THE STATE OF JHARKHAND",
+  "court": "High Court of Jharkhand",
+  "decision_date": "2020-01-28",
+  "disposition": "Bail",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010015262020_1_2020-01-28.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/JHHC010004522020.json",
+  "case_title": "B.A./145/2020 of RASID ANSARI Vs THE STATE OF JHARKHAND",
+  "court": "High Court of Jharkhand",
+  "decision_date": "2020-01-22",
+  "disposition": "Bail",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010004522020_1_2020-01-22.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/JHHC010035752020.json",
+  "case_title": "A.B.A./851/2020 of SUJEET KUMAR MEHTA Vs THE STATE OF JHARKHAND",
+  "court": "High Court of Jharkhand",
+  "decision_date": "2020-03-17",
+  "disposition": "Bail",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010035752020_1_2020-03-17.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/JHHC010047772020.json",
+  "case_title": "A.B.A./1129/2020 of JAGMOHAN YADAV Vs THE STATE OF JHARKHAND",
+  "court": "High Court of Jharkhand",
+  "decision_date": "2020-03-02",
+  "disposition": "Bail",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2020/court=20_7/bench=jhar_pg/JHHC010047772020_1_2020-03-02.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HPHC010255522025.json",
+  "case_title": "CRMPM/1057/2025 of GULSHAN Vs STATE OF HP",
+  "court": "High Court of Himachal Pradesh",
+  "decision_date": "2025-05-23",
+  "disposition": "BAIL REJECTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2025/court=2_5/bench=cmis/HPHC010255522025_1_2025-05-23.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCBM010001291986.json",
+  "case_title": "APEAL/249/1986 of STATE VS B.K.PATIL Vs",
+  "court": "Bombay High Court",
+  "decision_date": "1993-01-27",
+  "disposition": "REJECTED /DISPOSED AT ADM.STAGE(EXCEPT APPEAL) BAIL GR./REJ.",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=newas/HCBM010001291986_1_2023-02-13.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCBM070021592001.json",
+  "case_title": "APPLN/63/2001 of PARUBAI ASHOK BHOSALE and ANR . Vs THE STATE OF MAHARASHTRA .",
+  "court": "Bombay High Court",
+  "decision_date": "2001-02-12",
+  "disposition": "REJECTED /DISPOSED AT ADM.STAGE(EXCEPT APPEAL) BAIL GR./REJ.",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=kolhcdb/HCBM070021592001_1_2005-10-24.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCBM070049722003.json",
+  "case_title": "APPLN/581/2003 of PINTU @ AMAR ANANDA AUGHADE and ANR. Vs THE STATE OF MAHARASHTRA",
+  "court": "Bombay High Court",
+  "decision_date": "2003-02-24",
+  "disposition": "REJECTED /DISPOSED AT ADM.STAGE(EXCEPT APPEAL) BAIL GR./REJ.",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1993/court=27_1/bench=kolhcdb/HCBM070049722003_1_2004-08-11.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCBM010036521997.json",
+  "case_title": "WP/6/1997 of DWARKADAS DEVIDAS SHAH and ANR. Vs THE STATE OF MAHARASHTRA and ANR.",
+  "court": "Bombay High Court",
+  "decision_date": "1998-01-19",
+  "disposition": "REJECTED /DISPOSED AT ADM.STAGE(EXCEPT APPEAL) BAIL GR./REJ.",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=1998/court=27_1/bench=newas/HCBM010036521997_1_2008-06-20.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCMA011716972006.json",
+  "case_title": "CRL OP/283/2006 of SUBRAMANI Vs THE SUB INSPECTOR OF POLICE",
+  "court": "Madras High Court",
+  "decision_date": "2006-01-05",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2006/court=33_10/bench=hc_cis_mas/HCMA011716972006_1_2006-01-05.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCMA011149382007.json",
+  "case_title": "CRL OP/145/2007 of GANAPATHY Vs STATE BY",
+  "court": "Madras High Court",
+  "decision_date": "2007-01-05",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011149382007_1_2015-01-19.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCMA011174922002.json",
+  "case_title": "CRL A/575/2002 of AYYASAMY Vs INSPECTOR OF POLICE",
+  "court": "Madras High Court",
+  "decision_date": "2007-06-26",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011174922002_1_2007-06-26.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/HCMA011281482007.json",
+  "case_title": "CRL OP/16246/2007 of RAVI Vs THE SUB INSPECTOR OF POLICE",
+  "court": "Madras High Court",
+  "decision_date": "2007-06-09",
+  "disposition": "BAIL GRANTED",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2007/court=33_10/bench=hc_cis_mas/HCMA011281482007_1_2007-06-09.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/UKHC010077362009.json",
+  "case_title": "BA1/277/2009 of TEERATH NATH Vs STATE OF UTTARAKHAND",
+  "court": "High Court of Uttarakhand",
+  "decision_date": "2009-04-08",
+  "disposition": "BAIL",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077362009_1_2009-04-08.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/UKHC010077442009.json",
+  "case_title": "BA1/1026/2009 of SALIM AND ANR Vs STATE OF UTTARAKHAND",
+  "court": "High Court of Uttarakhand",
+  "decision_date": "2009-12-24",
+  "disposition": "BAIL",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077442009_1_2009-12-24.pdf",
+  "accessed": "2026-10-08"
+ },
+ {
+  "path": "/home/frost/legal-agent-eval/data/raw/hf_bail/UKHC010077452009.json",
+  "case_title": "BA1/1028/2009 of MAKSOOD Vs STATE OF UTTARAKHAND",
+  "court": "High Court of Uttarakhand",
+  "decision_date": "2009-12-01",
+  "disposition": "BAIL",
+  "source_url": "https://indian-high-court-judgments.s3.ap-south-1.amazonaws.com/data/pdf/year=2009/court=5_15/bench=ukhcucis_pg/UKHC010077452009_1_2009-12-01.pdf",
+  "accessed": "2026-10-08"
+ }
+]

@@ -1,0 +1,7 @@
+Source: https://indiacode.gov.in/handle/123456789/546200
+Act: The Bharatiya Nagarik Suraksha Sanhita, 2023
+Section: 91
+Title: Power to take bond or bail bond for appearance.
+(Text below is the India Code section_page_note for this section.)
+
+When any person for whose appearance or arrest the officer presiding in any Court is empowered to issue a summons or warrant, is present in such Court, such officer may require such person to execute a bond or bail bond for his appearance in such Court, or any other Court to which the case may be transferred for trial.
