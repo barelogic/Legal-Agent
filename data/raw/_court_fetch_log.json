@@ -1,0 +1,19 @@
+[
+ {
+  "area": "sc",
+  "year": "2024",
+  "index_url": "https://indian-supreme-court-judgments.s3.amazonaws.com/data/tar/year=2024/english/english.index.json",
+  "tar_url": "https://indian-supreme-court-judgments.s3.amazonaws.com/data/tar/year=2024/english/english.tar",
+  "files": 782,
+  "meta": true
+ },
+ {
+  "area": "hc",
+  "year": "2020",
+  "court": "court=19_16",
+  "bench": "bench=calcutta_original_side",
+  "index_url": "https://indian-high-court-judgments.s3.amazonaws.com/data/tar/year=2020/court=19_16/bench=calcutta_original_side/data.index.json",
+  "tar_url": "https://indian-high-court-judgments.s3.amazonaws.com/data/tar/year=2020/court=19_16/bench=calcutta_original_side/data.tar",
+  "files": 519
+ }
+]

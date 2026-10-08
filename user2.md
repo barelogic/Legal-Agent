@@ -1,9 +1,27 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08 night — corrections sweep done (all user2 items); live refresh running.
+Updated: 2026-10-09 — court ingestion landed (6,196 docs); suite re-running on big corpus.
 
-## Corrections sweep (this session, base `d82e17f` — all user2 items fixed)
+## Corpus expansion (this session — S3 courts + HF legal sets)
+
+- New: SC 2024 full PDFs (782 docs, neutral-citation citations, SCR-header
+  titles), Calcutta HC original-side 2020 sample (519), HF legal excerpts
+  (4,848: sujant full, LSI statutes/dev/test caps, bail sample).
+  Total **6,196 docs / 81,831 chunks** (was 47/1,489).
+- New code (all `corpus/`, ingest/ untouched): `list_court_files.py`
+  (S3 discovery), `fetch_court_tars.py` (SC years + HC benches),
+  `fetch_hf_legal.py` (caps; train/QA opt-in). `source_url` = tar URL +
+  `#member` for court PDFs, blob URLs for HF. Indian-Law QA excluded by
+  default (derived, not primary law).
+- Fixes along the way: `_EN` metadata-key mismatch (citations now resolve),
+  same-section doc_id collisions (index-stable ids), manifest `origin` per
+  builder, bulky raws gitignored (`sc/`, `hc/`, `hf_legal/`).
+- Provenance: every non-synthetic doc has `source_url` (test-enforced).
+- Eval consequence: trap max-overlap must be recomputed on the new vocab
+  BEFORE the 10-trap expansion lands. Queries still resolve 40/40.
+
+## Corrections sweep (earlier session, base `d82e17f` — all user2 items fixed)
 
 - **Two-corpora mix (unified):** `run_all.py --corpus auto` (default) uses
   `data/processed/` for gold AND the queries split when built, else
