@@ -29,10 +29,16 @@ def test_retrieve_shape_and_scores():
 
 
 def test_doc_ids_restricts_corpus():
-    hits = _idx().retrieve("cheating", top_k=8, doc_ids=["d2"])
+    hits = _idx().retrieve("cheating registered", top_k=8, doc_ids=["d2"])
     assert hits and all(c.doc_id == "d2" for c, _ in hits)
-    stat = _idx().retrieve("cheating", top_k=8, doc_ids=["d1"])
-    assert all(c.doc_id == "d1" for c, _ in stat)
+    stat = _idx().retrieve("cheating allegations", top_k=8, doc_ids=["d1"])
+    assert stat and all(c.doc_id == "d1" for c, _ in stat)
+
+
+def test_hybrid_single_token_gated():
+    # same refusal lever as the lexical registry: one shared token is noise
+    assert _idx().retrieve("cheating frobnication") == []
+    assert _idx().retrieve("cheating frobnication", min_overlap=1) != []
 
 
 def test_gibberish_returns_empty():
@@ -43,5 +49,5 @@ def test_module_retrieve_uses_seed_corpus():
     import retrieval.hybrid as h
 
     h._INDEX = None  # force rebuild from seeds (no processed JSONL in repo)
-    hits = retrieve("bail", top_k=4)
+    hits = retrieve("bail non-bailable", top_k=4)
     assert hits and all(isinstance(s, float) for _, s in hits)
