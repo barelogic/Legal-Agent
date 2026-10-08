@@ -111,6 +111,20 @@ trace-dict/optional fields only, `contracts/schemas.py` untouched).
 - False refusals: **12/30, identical set to baseline**, verifier-caused none.
   Suite: **89 passed** (78 + 11 new).
 
+## h001 short-query net (2026-10-08, on `core/phase-1`, unmerged)
+
+Note: `/home/frost/corrections-h001.md` (holdout h001, main @ `c790417`).
+Verdict there is "test artifact, no fix required", but the failure mode is
+real — a 7-word-prefix question missed its gold chunk in a lexical top-4
+(hybrid top-4 had it at rank 1). Fix, not deflection: `answer_question`
+widens the lexical net (`top_k` → max 8) when the query has ≤6 distinct
+content tokens (`SHORT_QUERY_TOKENS/SHORT_QUERY_TOP_K` in
+`workflows/answer.py`; effective value + boost reason in trace). This only
+proposes more candidates — gates + verifier still decide, so it cannot
+fabricate. Chose this over defaulting everything to hybrid (heavier,
+systemic) per the note's own options. Refusals re-measured: **12/30,
+identical set**, verifier-caused none. Suite: **90 passed**.
+
   Correction to the sweep's "fixes landed" note: `max_scan` does NOT count
   kept rows only — it is a scan budget over every streamed row *including*
   skipped ones (see `iter_hf_rows` docstring). Counting kept-only would

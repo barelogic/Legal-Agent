@@ -15,7 +15,7 @@ from typing import Literal
 
 from contracts.schemas import Answer, Chunk, Claim, MissingInfo
 from generation.claims import generate_claims
-from retrieval.store import Registry
+from retrieval.store import Registry, _content_tokens
 from verify import flags as vflags
 from verify.citations import build_citations
 from verify.judge import is_mock_client, make_judge_client
@@ -24,6 +24,12 @@ from verify.verifier import verify_all
 Workflow = Literal["chat", "draft", "review", "research"]
 REFUSAL = "Not found in the provided sources"
 REGEN_FAIL_FRACTION = 0.30
+# Short queries carry little signal: a 7-word prefix can miss its own chunk
+# in a top-4 lexical net (see corrections-h001.md). Widen the net for them.
+# This only proposes more candidates — gates + verifier still decide, so it
+# cannot fabricate, only un-refuse when evidence exists.
+SHORT_QUERY_TOKENS = 6
+SHORT_QUERY_TOP_K = 8
 
 
 def render_text(claims: list[Claim]) -> str:
@@ -45,8 +51,17 @@ def answer_question(
 ) -> Answer:
     """Full grounded pipeline returning an Answer model."""
     t0 = time.perf_counter()
-    retrieved: list[Chunk] = registry.search(question, top_k=top_k)
-    return answer_from_chunks(question, workflow, registry, llm, retrieved, t0=t0)
+    effective_top_k = top_k
+    if len(set(_content_tokens(question))) <= SHORT_QUERY_TOKENS:
+        effective_top_k = max(top_k, SHORT_QUERY_TOP_K)
+    retrieved: list[Chunk] = registry.search(question, top_k=effective_top_k)
+    ans = answer_from_chunks(question, workflow, registry, llm, retrieved, t0=t0)
+    ans.trace["top_k_effective"] = effective_top_k
+    if effective_top_k != top_k:
+        ans.trace["top_k_boost"] = (
+            f"short query: top_k {top_k} -> {effective_top_k}"
+        )
+    return ans
 
 
 def answer_from_chunks(
