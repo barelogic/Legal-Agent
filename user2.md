@@ -23,6 +23,14 @@ Updated: 2026-10-09 — 20 traps live (overlap-logged); sweep + ladder running.
   cutoff} on DEV only (holdout never touched) — answerable recall@k vs
   trap empty-retrieval rate; knee by best trap-empty within 0.02 of max
   recall. Recommends only; P1 defaults unchanged.
+- Sweep result (dev n=36, `results/sweep.json`): recall flat 0.43 for
+  coverage 0–0.32, falling at 0.4 (0.37) / 0.5 (0.29); trap-empty 0.000
+  everywhere except 0.5 (0.091 = 1/11); rerank bypass ≡ cutoff on ALL
+  configs (cutoff 0.0 drops nothing). Knee = current defaults
+  (0.32 + rerank-on). Honest read: retrieval gates barely separate
+  near-vocab traps — refusal has to come from the verifier/live-LLM
+  stages, which is what the ladder measures end-to-end. (Footnote: the
+  CrossEncoder OOM'd on GPU and ran on CPU.)
 - Corrections `user2` items: trap recompute + expansion DONE; sweep
   running; served-vs-committed closes after the corpus rebuild (queued
   behind the ladder so `latency_ms` stays clean).
