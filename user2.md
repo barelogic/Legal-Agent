@@ -1,7 +1,7 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08, plain-RAG baseline landed (live-capable, fallback numbers reported; live key blocked).
+Updated: 2026-10-08 evening — merged to `origin/main@d82e17f`; live Ollama numbers reported.
 
 ## P1 — LIVE numbers, local Ollama `llama3.1:8b` (dev/tunable split, n=30, 25 answerable)
 
