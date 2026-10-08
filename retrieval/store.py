@@ -26,6 +26,31 @@ def _content_tokens(s: str) -> list[str]:
     return [t for t in _tokens(s) if t not in STOPWORDS]
 
 
+# Judgment-seeking signals: general outcome/court vocabulary (not corpus
+# slugs). A query matching >=2 of these is asking about decided cases,
+# so judgment-doc chunks get a ranking boost. Statute questions
+# ("bail in non-bailable offences?", "FIR ... status") carry 0-1 and
+# are unaffected. Threshold 2 keeps single-term noise unrouted.
+JUDGMENT_SIGNALS = frozenset(
+    "case cases granted rejected held holding decided decision disposition "
+    "court courts bench appeal appeals appellant respondent petitioner "
+    "conviction acquittal acquitted sentenced sentence".split()
+)
+JUDGMENT_BOOST = 3  # same scale as the section-label bonus below
+MIN_JUDGMENT_SIGNALS = 2
+
+
+def doc_routing(query: str) -> str | None:
+    """'judgment' when the query seeks decided-case outcomes, else None.
+
+    Pure function of the query (no corpus access), so lexical/hybrid
+    paths and trace recording stay consistent by construction.
+    """
+    if len(set(_content_tokens(query)) & JUDGMENT_SIGNALS) >= MIN_JUDGMENT_SIGNALS:
+        return "judgment"
+    return None
+
+
 class Registry:
     """Holds Docs and Chunks; minimal retrieval over chunk text."""
 
@@ -81,6 +106,7 @@ class Registry:
         if not qtok:
             return []
         required = min(min_overlap, len(set(qtok)))
+        routing = doc_routing(query)
         qcount = Counter(qtok)
         qdistinct = set(qcount)
         allowed = set(doc_ids) if doc_ids else None
@@ -100,6 +126,11 @@ class Registry:
             # small bonus for section-label match (e.g. "Section 483")
             if ch.section_label and ch.section_label.lower() in query.lower():
                 score += 3
+            # judgment-seeking queries rank decided-case chunks first
+            if routing == "judgment":
+                doc = self.docs.get(ch.doc_id)
+                if doc is not None and doc.doc_type == "judgment":
+                    score += JUDGMENT_BOOST
             if score > 0:
                 scored.append((score, cid))
         scored.sort(key=lambda x: (-x[0], x[1]))

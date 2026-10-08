@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-08, at `0c23f62` (verifier hardening; main at `3bd71b2`, pushed to origin).
+Updated: 2026-10-09, at `3ac2d8b` (core batch merged to main, pushed to origin).
 
 ## Landed on main (all pushed to origin)
 
@@ -18,6 +18,11 @@ Updated: 2026-10-08, at `0c23f62` (verifier hardening; main at `3bd71b2`, pushed
 - `bdaae51` Hybrid BM25 leg: same `min_overlap` gate (merge `939d943`).
   Dense leg intentionally untouched — embeddings match paraphrases with zero
   token overlap by design (moot today: dense inert without ML libs).
+- `3ac2d8b` Core batch (merge `core/phase-1` → main, pushed): verifier
+  hardening `0c23f62`, corrections batch 2 `cb2f6c4`, h001 short-query net
+  `69c5e9c`, relevance gates `b9b2102`, A3 flags layer `a988cda`,
+  B1/B2/B3 workflows `98005fb`, dense-leg fix `25de873`. 165 tests green
+  post-merge (124 core + 41 from main).
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
@@ -32,7 +37,7 @@ Updated: 2026-10-08, at `0c23f62` (verifier hardening; main at `3bd71b2`, pushed
 
 ## Checks (this worktree)
 
-- `pytest tests/`: **52 passed**.
+- `pytest tests/`: **165 passed** (124 core + 41 from main, post-merge).
 - `contracts/schemas.py`: untouched.
 - Live-corpus spot checks: `zxqv…` → 0 hits/refused, `xyzzy quantum…` → 0 hits,
   `bail in non-bailable offences?` → 4 hits/answered.
@@ -84,7 +89,7 @@ False refusals on `eval/queries.jsonl` answerable (seeds-only registry):
 **12/30 = 40.0%, byte-identical to pre-change baseline** (all 12 are
 empty-retrieval gaps; verifier-caused: none). Suite: **78 passed**.
 
-## Corrections batch 2 (2026-10-08, on `core/phase-1`, unmerged)
+## Corrections batch 2 (2026-10-08, merged `3ac2d8b`, pushed)
 
 Report: `/home/frost/correctionsfile.md` (full-repo sweep, main @ `d82e17f`).
 Decisions taken with user: verified-only `claims` on success (failed stay
@@ -111,7 +116,7 @@ trace-dict/optional fields only, `contracts/schemas.py` untouched).
 - False refusals: **12/30, identical set to baseline**, verifier-caused none.
   Suite: **89 passed** (78 + 11 new).
 
-## Relevance gates (2026-10-08, on `core/phase-1`, unmerged)
+## Relevance gates (2026-10-08, merged `3ac2d8b`, pushed)
 
 Trap queries share 3-4 content words, which `min_overlap=2` cannot refuse.
 New levers, all env-configurable (P2 sweep owns the values; held-out split
@@ -132,7 +137,7 @@ never used for tuning):
 - P2 parameter names: `MIN_COVERAGE`, `RERANK_MIN_SCORE`
   (plus existing `VERIFY_*`, `TOP_K`). Env docs in `.env.example`.
 
-## h001 short-query net (2026-10-08, on `core/phase-1`, unmerged)
+## h001 short-query net (2026-10-08, merged `3ac2d8b`, pushed)
 
 Note: `/home/frost/corrections-h001.md` (holdout h001, main @ `c790417`).
 Verdict there is "test artifact, no fix required", but the failure mode is
@@ -152,7 +157,20 @@ identical set**, verifier-caused none. Suite: **90 passed**.
   unbind the 17M-row stream; short filtered ingests are the budget working,
   fixed by raising `max_scan`, not by code change.
 
-## B1/B2/B3 workflows (2026-10-09, on `core/phase-1`, unmerged)
+## A3 flags layer + `run()` entry (2026-10-09, merged `3ac2d8b`, pushed)
+
+Agreements I1/I2 were not in the repo; confirmed with user before building:
+I2 = VERIFY_* plus relevance flags, I1 = per-request flag overrides.
+`workflows/flags.py` carries all seven flags (verify_text, entailment,
+citation_gate, regenerate, coverage, rerank, short_boost — everything on,
+each with a `VERIFY_*` env kill-switch) and a shared
+`run(workflow, payload, flags=None)` entry that `/answer` and the eval
+harness both call; active flags land in `Answer.trace["flags"]`. `AskIn`
+gained the seven optional override fields (all `None`-default, backward
+compatible). 12 tests prove each flag flips behaviour on a fixed fixture.
+`flags.run()` now also dispatches draft/review/research (B1/B2/B3 wiring).
+
+## B1/B2/B3 workflows (2026-10-09, merged `3ac2d8b`, pushed)
 
 - `workflows/draft.py` (B1): per required field — user_input fills render
   `[USER-PROVIDED: field=value]` (never claims) else MissingInfo;
@@ -183,6 +201,28 @@ identical set**, verifier-caused none. Suite: **90 passed**.
   read `$TEMPLATES_DIR`/`$SECTION_MAP_PATH` → core paths → main-tree copies
   (read-only; tests use fixtures, suite stays hermetic).
 - Suite: **121 passed** (106 + 15 new), schemas untouched.
+
+## Corrections 2026-10-09 pass (on `core/phase-1`, unmerged)
+
+Report: `/home/frost/correctionsfile.md` (fresh pass, main @ `3ac2d8b`).
+Two core items, both done here:
+
+- **Judgment routing merged.** Cross-case queries ("which cases was bail
+  granted, by which court") refused with `routing: None` because all-statute
+  retrieval starved the claims stage. Merged `core/routing-judgment`
+  (`ab8e7be`): `doc_routing()` in `retrieval/store.py` (single source of
+  truth) flags queries carrying ≥2 outcome/court signals; lexical leg adds
+  +3 to judgment-doc chunks, hybrid leg +0.10 post-RRF; `trace["routing"]`
+  records it. Gates + verifier unchanged — wider routing only proposes.
+  Conflicts were append-append (tests + trace dict); verified the merged
+  hybrid hunk (`self.docs` is populated by `get_index()`, guarded falsy in
+  bare-index tests). Suite: **175 passed** (171 + 4 temp-0).
+- **Temp-0 + recorded policy.** Bailable flakiness is live-LLM sampling, not
+  grounding (refusals stay honest). `LLM_TEMPERATURE` (default **0.0**):
+  `GeminiClient` now defaults to it (was provider default ~1.0 — the
+  flakiness source; OpenAI leg already hardcoded 0 and now honors the env);
+  `Answer.trace["llm"]` records provider/model/temperature (mock shows
+  `"mock (deterministic)"`). Trace-dict only, schemas untouched.
 
 ## Hybrid truth-check (2026-10-09, bge-m3 + reranker on 1485-chunk corpus)
 
