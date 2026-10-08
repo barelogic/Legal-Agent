@@ -152,6 +152,38 @@ identical set**, verifier-caused none. Suite: **90 passed**.
   unbind the 17M-row stream; short filtered ingests are the budget working,
   fixed by raising `max_scan`, not by code change.
 
+## B1/B2/B3 workflows (2026-10-09, on `core/phase-1`, unmerged)
+
+- `workflows/draft.py` (B1): per required field — user_input fills render
+  `[USER-PROVIDED: field=value]` (never claims) else MissingInfo;
+  otherwise scoped retrieval (`Registry.search` gained a backward-compatible
+  `doc_ids` filter) with `retrieval_query` or name+description fallback,
+  normal claims→verify, sourced only if ≥1 verifies (why_needed=description,
+  searched_in=scope). Names containing "provision"/"grounds" also search
+  statute+judgment docs; section numbers arrive only inside verified claim
+  text. precheck=True returns status text + claims + missing + sourced/required
+  confidence, never refused. Full draft assembles boilerplate fixed_text with
+  `claim [cN]` / `[MISSING: f]` / `[USER-PROVIDED: …]` fills + Sources block
+  (globally renumbered c1..N); refuses only when nothing sourced and no fills.
+- `workflows/review.py` (B2): per-doc claims→verify over the doc's own chunks
+  (verifier still guards every claim), keyword MissingInfo for FIR / charge
+  sheet / remand order / medical report, deterministic regex contradictions
+  (FIR-with-digits, attributed dates, Rs.-amounts, named ages, sections) —
+  cross-doc pairs only, first-pair-per-(attr,docs), real chunk_ids.
+  P2 planted-conflict files are not in this tree, so tests plant inline.
+- `workflows/research.py` (B3): case claims (doc_ids scope) + statute/judgment
+  claims, citations resolved-only by construction; IPC/CrPC/Evidence mentions
+  (±80-char Act window; bare "Section N" skipped) looked up in
+  `corpus/section_map.json` — the real file carries repeal rows only, so the
+  honest default is MissingInfo ("no verified old-to-new mapping available");
+  shown rows must carry source_url (sourceless rows → MissingInfo).
+- Wiring: `flags.run()` dispatches draft/review/research (draft/review
+  default the question; research requires it); `AskIn` gained optional
+  `draft_type/instructions/provided_values/precheck`. Template/map loaders
+  read `$TEMPLATES_DIR`/`$SECTION_MAP_PATH` → core paths → main-tree copies
+  (read-only; tests use fixtures, suite stays hermetic).
+- Suite: **121 passed** (106 + 15 new), schemas untouched.
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).

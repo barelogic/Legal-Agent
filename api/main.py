@@ -51,6 +51,11 @@ class AskIn(BaseModel):
     coverage: bool | None = None
     rerank: bool | None = None
     short_boost: bool | None = None
+    # Draft/review/research inputs (optional, backward compatible).
+    draft_type: str | None = None
+    instructions: str | None = None
+    provided_values: dict | None = None
+    precheck: bool | None = None
 
 
 class HfIn(BaseModel):
@@ -81,7 +86,7 @@ def get_source(chunk_id: str) -> Chunk:
 @app.post("/answer", response_model=Answer)
 def post_answer(body: AskIn) -> Answer:
     """Grounded answer: same run() entry the eval harness uses."""
-    if not body.question.strip():
+    if not body.question.strip() and body.workflow not in ("draft", "review"):
         raise HTTPException(status_code=422, detail="question must not be empty")
     if body.top_k is not None and not 1 <= body.top_k <= 50:
         raise HTTPException(status_code=422, detail="top_k must be 1..50")

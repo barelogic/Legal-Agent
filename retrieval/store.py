@@ -54,6 +54,7 @@ class Registry:
         top_k: int = 4,
         min_overlap: int = 2,
         min_coverage: float | None = None,
+        doc_ids: list[str] | None = None,
     ) -> list[Chunk]:
         """Rank chunks by content-token overlap. Stopword-only overlap -> [].
 
@@ -67,6 +68,10 @@ class Registry:
         traps sharing 3-4 content words: the fraction of distinct query
         content tokens present in the chunk must reach it. The section-label
         bypass skips both gates (an explicit "Section N" ask).
+
+        doc_ids (None -> whole registry) scopes retrieval to one case set;
+        the draft/review workflows use this so a field is sourced only from
+        its own case files.
         """
         if min_coverage is None:
             from generation.config import get_min_coverage
@@ -78,8 +83,11 @@ class Registry:
         required = min(min_overlap, len(set(qtok)))
         qcount = Counter(qtok)
         qdistinct = set(qcount)
+        allowed = set(doc_ids) if doc_ids else None
         scored: list[tuple[int, str]] = []
         for cid, ch in self.chunks.items():
+            if allowed is not None and ch.doc_id not in allowed:
+                continue
             ccount = Counter(_content_tokens(ch.text))
             overlap = {t for t in qcount if t in ccount}
             if ch.section_label and ch.section_label.lower() in query.lower():

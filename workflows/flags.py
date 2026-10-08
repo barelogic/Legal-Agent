@@ -113,7 +113,17 @@ def run(workflow, payload, flags: Flags | None = None, *, registry=None, llm=Non
     from workflows.answer import answer_from_chunks, answer_question
 
     eff = flags_from_payload(payload, flags)
+    workflow = str(workflow or "chat")
     question = _get(payload, "question", "") or ""
+    if workflow in ("draft", "review"):
+        # These workflows are driven by doc_ids (+ instructions for draft);
+        # a chat-style question is optional, defaulted for traceability.
+        default_q = (
+            f"Draft {_get(payload, 'draft_type', 'document')}: "
+            f"{_get(payload, 'instructions', '') or 'assemble from case files'}"
+            if workflow == "draft" else "Review the case files"
+        )
+        question = question.strip() or default_q
     if not question.strip():
         raise ValueError("question must not be empty")
     top_k = _get(payload, "top_k", None) or get_top_k()
@@ -133,6 +143,36 @@ def run(workflow, payload, flags: Flags | None = None, *, registry=None, llm=Non
     min_coverage = None if eff.coverage else 0.0
     rerank_min_score = None if eff.rerank else float("-inf")
     flagset = eff.as_dict()
+
+    if workflow == "draft":
+        from workflows.draft import run_draft
+
+        draft_type = _get(payload, "draft_type", "") or ""
+        if not draft_type:
+            raise ValueError("draft_type is required for the draft workflow")
+        return run_draft(
+            draft_type=draft_type,
+            doc_ids=doc_ids,
+            instructions=_get(payload, "instructions", None),
+            provided_values=_get(payload, "provided_values", None),
+            registry=registry,
+            llm=llm,
+            flagset=flagset,
+            precheck=bool(_get(payload, "precheck", False)),
+            top_k=top_k,
+        )
+    if workflow == "review":
+        from workflows.review import run_review
+
+        if not doc_ids:
+            raise ValueError("doc_ids is required for the review workflow")
+        return run_review(doc_ids=doc_ids, registry=registry, llm=llm,
+                          flagset=flagset, top_k=top_k)
+    if workflow == "research":
+        from workflows.research import run_research
+
+        return run_research(question=question, doc_ids=doc_ids, registry=registry,
+                            llm=llm, flagset=flagset, top_k=top_k)
 
     if backend == "hybrid" or doc_ids:
         from retrieval.hybrid import retrieve
