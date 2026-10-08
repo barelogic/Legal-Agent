@@ -31,11 +31,25 @@ def _ps() -> list[str]:
 
 
 def _ollama_model() -> str:
+    """Local-model status — local endpoints ONLY, never prod.
+
+    Derives the status URL from OPENAI_BASE_URL and only contacts it when
+    it is a loopback host. Anything else returns n/a without a network call,
+    so this dev helper can never probe (or leak key material to) prod.
+    """
+    import os
+    from urllib.parse import urlparse
+
+    base = os.getenv("OPENAI_BASE_URL", "http://localhost:11434/v1")
+    host = (urlparse(base).hostname or "")
+    if host not in ("localhost", "127.0.0.1", "::1"):
+        return "n/a (non-local endpoint; dev-only check skipped)"
+    root = base.split("/v1")[0].rstrip("/")
     try:
         import urllib.request
 
         with urllib.request.urlopen(
-            "http://localhost:11434/api/ps", timeout=5
+            root + "/api/ps", timeout=5
         ) as r:
             data = json.loads(r.read())
         models = [m.get("name", "?") for m in data.get("models", [])]
