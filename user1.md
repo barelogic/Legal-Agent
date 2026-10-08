@@ -55,6 +55,35 @@ Report: `/home/frost/correctionsfile.md` (main @ `a49f55c`). Both core items fix
   traps, if any, will now score as answered — check against your intended
   refusal P/R in `eval/metrics_grounded.py`.
 
+## Verifier hardening (2026-10-08, on `core/phase-1`, unmerged)
+
+Closes the quote-smuggling hole: `verify_claim` checked only that
+`quote` is verbatim in a cited chunk while `claim.text` (model-written)
+was unchecked. New stages in `verify/verifier.py`, all behind env flags
+(`VERIFY_TEXT / VERIFY_ENTAILMENT / VERIFY_CITATION_GATE /
+VERIFY_REGENERATE`, default ON — no A3 flag spec found in repo):
+
+- `verify/textcheck.py`: every number/date/section/money/case/court/
+  proper-span/acronym in `text` must appear in normalised `quote`
+  (verbatim strictness, no fuzzy matching). Single capitalised words and
+  stopwords never extracted; `Section`↔`s.` tolerated on number match;
+  leading `In/Under/...` stripped from spans (killed one real over-refusal).
+- `verify/judge.py`: entailment yes/no/partial at temp 0, only `yes`
+  passes; `LLM_JUDGE_MODEL` else unlike generator; skipped under Mock.
+- `verify/citations.py`: `resolve_raw` doc_id fallback is word-boundary
+  only; `Section N of <Act>` resolves via the Act part; each mention must
+  resolve AND appear in quote/chunk.
+- `workflows/answer.py`: >30% failed → one retry with failure notes,
+  keep-better; `trace` gains `dropped_reasons`, `fallbacks`,
+  `verify_flags`, `regenerated` (trace-dict keys only — no API shape
+  change, `contracts/schemas.py` untouched).
+- `generation/claims.py`: SOURCES marked untrusted data (`<SOURCES>`);
+  instruction-like claim text is dropped by the verifier.
+
+False refusals on `eval/queries.jsonl` answerable (seeds-only registry):
+**12/30 = 40.0%, byte-identical to pre-change baseline** (all 12 are
+empty-retrieval gaps; verifier-caused: none). Suite: **78 passed**.
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).

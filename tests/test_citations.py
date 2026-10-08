@@ -1,7 +1,13 @@
 """Citation gate: only registry-backed cites survive."""
 
 from contracts.schemas import Chunk, Citation, Claim, Doc
-from verify.citations import build_citations, gate_citations
+from verify.citations import (
+    build_citations,
+    extract_citation_mentions,
+    gate_citations,
+    gate_claim_citations,
+    resolve_raw,
+)
 
 
 def _setup():
@@ -25,3 +31,35 @@ def test_gate_drops_hallucinated():
     ]
     kept = gate_citations(raw, docs)
     assert len(kept) == 1 and kept[0].doc_id == "bnss_2023"
+
+
+def test_doc_id_substring_needs_word_boundary():
+    docs, _, _ = _setup()
+    assert resolve_raw("see bnss_2023 supra", docs) is not None
+    assert resolve_raw("xbnss_2023y", docs) is None
+    assert resolve_raw("mybnss_20230", docs) is None
+
+
+def test_extract_mentions():
+    text = (
+        "Under Section 483 of the Bharatiya Nagarik Suraksha Sanhita, "
+        "Satender Kumar Antil v. CBI holds bail is the rule, see (2022) 10 SCC 123."
+    )
+    mentions = extract_citation_mentions(text)
+    assert any("Section 483 of" in m for m in mentions)
+    assert any("Antil v. CBI" in m for m in mentions)
+    assert any("SCC" in m for m in mentions)
+    # Bare "Section N" is a number check, not a citation mention.
+    assert extract_citation_mentions("Relief under Section 483.") == []
+
+
+def test_gate_claim_unresolved_case_fails():
+    docs, cmap, _ = _setup()
+    chunk = next(iter(cmap.values()))
+    reason = gate_claim_citations(
+        "In Sharma v. State of Utopia (2024), bail is the rule.",
+        "bail text",
+        [chunk],
+        docs,
+    )
+    assert reason is not None and "Sharma" in reason

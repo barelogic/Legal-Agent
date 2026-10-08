@@ -54,8 +54,10 @@ class MockClient:
 class GeminiClient:
     """Minimal Gemini REST client (generateContent). No SDK dependency."""
 
-    def __init__(self, model: str | None = None, api_key: str | None = None) -> None:
+    def __init__(self, model: str | None = None, api_key: str | None = None,
+                 temperature: float | None = None) -> None:
         self.model = model or os.getenv("LLM_MODEL", "gemini-2.0-flash")
+        self.temperature = temperature
         self.api_key = api_key if api_key is not None else (
             os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
         )
@@ -67,7 +69,9 @@ class GeminiClient:
             f"https://generativelanguage.googleapis.com/v1beta/models/"
             f"{self.model}:generateContent?key={self.api_key}"
         )
-        body = {"contents": [{"parts": [{"text": prompt}]}]}
+        body: dict = {"contents": [{"parts": [{"text": prompt}]}]}
+        if self.temperature is not None:
+            body["generationConfig"] = {"temperature": self.temperature}
         r = requests.post(url, json=body, timeout=60)
         r.raise_for_status()
         data = r.json()
