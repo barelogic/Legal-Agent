@@ -31,6 +31,19 @@ Updated: 2026-10-08, at merge `17b9af3` (origin/main refusal-hardening + corpus 
   quote with an "unavailable" note — chunk text is never fabricated.
 - 62 tests green at merge landing.
 
+## Corrections fixes (2026-10-08, on `ui/streamlit`, verified here + main)
+
+- "Fill example" crash (`ui/app.py`): preset write moved to an `on_click`
+  callback (`_fill_example`) — writing a widget-backed key after
+  instantiation raised `StreamlitWidgetAlreadyInstantiatedError` on repeat
+  clicks. Verified via `AppTest`: two `preset-chat` clicks, no exception,
+  `q-chat` == preset.
+- `st.dataframe` deprecation (`ui/app.py`): `_DATAFRAME_KWARGS` resolves
+  `width="stretch"` vs legacy `use_container_width` from the installed
+  signature at import — runs warning-free on old and new Streamlit.
+- Contract reminder: unchanged — HTTP-only, verified quotes, honest
+  404 fallback. 66 tests green, `contracts/schemas.py` untouched.
+
 ## Flags for other areas (not mine to fix)
 
 - All: pre-merge backup of early untracked copies (`corpus/`, `data/raw/`,
