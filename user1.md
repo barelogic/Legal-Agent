@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-09, at `fe87e4c` on main (corrections pass merged, pushed to origin; branch at `dfe2f3a`).
+Updated: 2026-10-09, at `d78dd9d` on main (P2-swap batch merged, pushed to origin).
 
 ## Landed on main (all pushed to origin)
 
@@ -23,6 +23,9 @@ Updated: 2026-10-09, at `fe87e4c` on main (corrections pass merged, pushed to or
   `69c5e9c`, relevance gates `b9b2102`, A3 flags layer `a988cda`,
   B1/B2/B3 workflows `98005fb`, dense-leg fix `25de873`. 165 tests green
   post-merge (124 core + 41 from main).
+- `d78dd9d` Corrections + P2-swap batch (merge `origin/core/phase-1` → main,
+  pushed): routing-judgment merge, `LLM_TEMPERATURE` + `trace["llm"]`,
+  P2 planted-pair test + MockClient abbreviation fix. 177 green.
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
