@@ -21,10 +21,6 @@ def get_llm_judge_model() -> str:
     return os.getenv("LLM_JUDGE_MODEL", "").strip()
 
 
-def get_gemini_key() -> str:
-    return os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")
-
-
 def get_top_k(default: int = 4) -> int:
     try:
         return int(os.getenv("TOP_K", str(default)))

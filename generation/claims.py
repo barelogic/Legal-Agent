@@ -68,16 +68,26 @@ def generate_claims(llm, question: str, chunks: list[Chunk], retry_notes: str | 
     """
     # MockClient emits one candidate per bound chunk: always bind exactly the
     # *retrieved* chunks so empty retrieval -> no candidates -> refusal.
+    # Bind on a per-call copy: mutating a shared client is race-unsafe
+    # under concurrent requests.
+    target = llm
     if hasattr(llm, "_chunks"):
         try:
-            llm._chunks = chunks  # type: ignore[attr-defined]
+            import copy as _copy
+
+            target = _copy.copy(llm)
+            target._chunks = chunks  # type: ignore[attr-defined]
         except Exception:
-            pass
+            target = llm
+            try:
+                llm._chunks = chunks  # type: ignore[attr-defined]
+            except Exception:
+                pass
     prompt = build_prompt(question, chunks)
     if retry_notes:
         prompt += (
             "\n\nPREVIOUS ATTEMPT FAILED VERIFICATION. Fix these problems "
             "and return a corrected JSON array only:\n" + retry_notes
         )
-    raw = llm.complete_claims(prompt)
+    raw = target.complete_claims(prompt)
     return parse_claims(raw)
