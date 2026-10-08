@@ -1,7 +1,7 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08, at merge `c2bb941` (main's hybrid gate merged in).
+Updated: 2026-10-08, corrections re-check vs `origin/main@8c46752` (hybrid seeds union + proportional gate).
 
 ## Landed on main
 
@@ -31,13 +31,31 @@ Updated: 2026-10-08, at merge `c2bb941` (main's hybrid gate merged in).
 
 ## Checks (this worktree, just now)
 
-- `pytest tests/ eval/tests/ corpus/tests/`: **63 passed**.
+- `pytest tests/ eval/tests/ corpus/tests/`: **81 passed** (77 + 4 new short-query probes).
 - `contracts/schemas.py`: untouched.
 - `eval/build_queries.py`: 40/40 resolve against `data/processed/`.
 
-## Gate-era numbers (measured just now, `run_all.py --hf-limit 0 --top-k 4`)
+## Corrections re-check (eval-owned, `origin/main@8c46752` merged in)
 
-Tunable split (n=30, 25 answerable); full table in `eval/results/tables.md`:
+- Hybrid skew: none in harness. `eval/systems.py` + `eval/metrics_retrieval.py`
+  build `HybridIndex(list(chunks.values()))` directly, so they never used the
+  buggy `_default_chunks()` (processed-only). API path did; now fixed
+  (`_registry_chunks()` seeds+processed union). Verified: `doc_ids=["case_file_demo"]`
+  and `["bnss_2023"]` filtered retrieves hit on main, refused on pre-fix branch.
+- Seed gold: `corpus_registry(hf_limit=0)` gold covers `bnss_2023 / sc_bail_2022 /
+  case_file_demo`; all answer on both lexical and hybrid post-fix. Hand-built
+  `queries.jsonl` covers `data/processed/` only (statute_*/ic_*/synth_*/hc_*,
+  20 gold docs) by design — no seed strings there, confirmed by grep.
+- Single-token: old `min_overlap=2` refused `"bail"`; new proportional gate
+  (`required=min(2,len(set))`) answers it (2 claims) while `"xyzzy"` still
+  refuses, on both systems. This matches intended refusal P/R
+  (`metrics_grounded.py`: answerables count toward verified_rate, gibberish
+  toward refusal_R). Locked by `eval/tests/test_short_queries.py` (4 tests).
+
+## Gate-era numbers (re-ran post-fix, `run_all.py --hf-limit 0 --top-k 4`)
+
+Tunable split (n=30, 25 answerable); full table in `eval/results/tables.md`.
+Branch and `/tmp/opencode/legal-agent-main@8c46752` outputs IDENTICAL:
 
 | system | hit_rate | recall@k | refusal_R | fabrication |
 |---|---|---|---|---|
