@@ -25,6 +25,8 @@ All commits share one git username, so **branches — not authors — separate w
   Never fabricate chunk text.
 - Needed from core: `GET /sources/{chunk_id}` → `Chunk` (200) / 404 when
   unknown. Response shape is the frozen `Chunk` model; no schema change.
+- Render rule: verified `quote`s from `Answer.claims` are the primary display;
+  `/sources/{chunk_id}` is context-only (full chunk around a quote).
 
 ## Non-negotiable grounding policy
 
