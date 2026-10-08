@@ -51,19 +51,22 @@ class Registry:
     def search(self, query: str, top_k: int = 4, min_overlap: int = 2) -> list[Chunk]:
         """Rank chunks by content-token overlap. Stopword-only overlap -> [].
 
-        min_overlap (distinct query content-tokens, default 2) is the refusal
-        lever: single-token overlap (e.g. near-gibberish sharing one legal
-        term) retrieves nothing instead of grounding an answer on noise.
+        min_overlap (default 2) is the refusal lever, scaled to query length:
+        required = min(min_overlap, #distinct query content-tokens). A genuine
+        single-term query ('bail') must match fully; multi-token noise sharing
+        one term (e.g. near-gibberish with 'quantum') still retrieves nothing
+        instead of grounding an answer on noise.
         """
         qtok = _content_tokens(query)
         if not qtok:
             return []
+        required = min(min_overlap, len(set(qtok)))
         qcount = Counter(qtok)
         scored: list[tuple[int, str]] = []
         for cid, ch in self.chunks.items():
             ccount = Counter(_content_tokens(ch.text))
             overlap = {t for t in qcount if t in ccount}
-            if len(overlap) < min_overlap and not (
+            if len(overlap) < required and not (
                 ch.section_label and ch.section_label.lower() in query.lower()
             ):
                 continue
