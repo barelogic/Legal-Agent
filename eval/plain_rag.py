@@ -150,6 +150,24 @@ def complete_answer_text(prompt: str, question: str,
     return mock_plain_text(question, chunks), "mock-fallback(no-live-llm)"
 
 
+def dense_available() -> bool:
+    """True when the dense leg CAN run (no model downloads triggered).
+
+    Checks the embed-model switch plus library presence only; never
+    constructs an index. Replaces peeking at HybridIndex privates.
+    """
+    import os
+
+    if os.getenv("EMBED_MODEL", "BAAI/bge-m3").strip() in ("", "tfidf-local", "none"):
+        return False
+    try:
+        import chromadb  # noqa: F401
+        import sentence_transformers  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def retrieve_top5(question: str,
                   chunks: dict[str, Chunk]) -> tuple[list[Chunk], str]:
     """Hybrid (BM25 + dense when installed) top-5; lexical fallback offline."""
@@ -159,8 +177,8 @@ def retrieve_top5(question: str,
 
         idx = HybridIndex(vals)
         hits = idx.retrieve(question, top_k=PLAIN_RAG_TOP_K)
-        backend = "hybrid-bm25+dense" if idx._dense_enabled() and idx._dense_ok \
-            else "hybrid-bm25"
+        backend = ("hybrid-bm25+dense" if dense_available()
+                   else "hybrid-bm25")
         return [c for c, _ in hits], backend
     except Exception as e:
         from retrieval.store import Registry
@@ -254,6 +272,10 @@ def run_plain_rag(question: str, docs: dict[str, Doc],
 
 # -- eval-time claim extraction + independent judging -----------------------
 
+# Cap: fabrication counts are over at most this many claims per answer;
+# the pre-cap count is logged as n_claims_raw so the cap is auditable.
+MAX_ATOMIC_CLAIMS = 12
+
 _EXTRACT_PROMPT = (
     "Split the ANSWER below into atomic factual statements, one per line, "
     "numbered '1. ...'. Keep each statement short and self-contained. "
@@ -281,10 +303,13 @@ def _sent_split(text: str) -> list[str]:
     return claims
 
 
-def extract_atomic_claims(answer_text: str) -> tuple[list[str], str]:
-    """LLM extractor live; deterministic sentence split offline."""
+def extract_atomic_claims(answer_text: str) -> tuple[list[str], str, int]:
+    """LLM extractor live; deterministic sentence split offline.
+
+    Returns (claims, mode, n_claims_raw): n_claims_raw is the pre-cap count.
+    """
     if answer_text.strip() == REFUSAL or not answer_text.strip():
-        return [], "none(refused)"
+        return [], "none(refused)", 0
     provider, _ = pipeline_info()
     if provider != "mock" and live_reachable("pipeline"):
         try:
@@ -292,13 +317,16 @@ def extract_atomic_claims(answer_text: str) -> tuple[list[str], str]:
             lines = [re.sub(r"^\d+[\).\:\-]\s*", "", ln).strip()
                        for ln in raw.strip().splitlines() if ln.strip()]
             claims = [ln for ln in lines
-                      if len(re.sub(r"\[[^\]]+\]", "", ln).strip()) >= 20][:12]
+                      if len(re.sub(r"\[[^\]]+\]", "", ln).strip()) >= 20]
+            n_raw = len(claims)
+            claims = claims[:MAX_ATOMIC_CLAIMS]
             if claims:
                 _, model = pipeline_info()
-                return claims, f"{provider}-live-extractor:{model}"
+                return claims, f"{provider}-live-extractor:{model}", n_raw
         except Exception:
             pass
-    return _sent_split(answer_text)[:12], "mock-fallback(sent-split)"
+    claims = _sent_split(answer_text)
+    return claims[:MAX_ATOMIC_CLAIMS], "mock-fallback(sent-split)", len(claims)
 
 
 _TOKEN_RE = re.compile(r"[a-z0-9]+")
@@ -351,11 +379,12 @@ def evaluate_plain_answer(answer_text: str, citations: list[Citation],
                           docs: dict[str, Doc]) -> dict:
     """Atomic-claim eval of one plain-RAG answer. Pure data -> JSON-able dict."""
     if answer_text.strip() == REFUSAL or not answer_text.strip():
-        return {"refused": True, "n_claims": 0, "n_supported": 0,
+        return {"refused": True, "n_claims": 0, "n_claims_raw": 0,
+                "n_supported": 0,
                 "groundedness": 1.0, "unresolved_citations": 0,
                 "fabrication": False, "claims": [], "supported": [],
                 "extract_mode": "none(refused)", "judge_mode": "none(refused)"}
-    claims, extract_mode = extract_atomic_claims(answer_text)
+    claims, extract_mode, n_raw = extract_atomic_claims(answer_text)
     texts = [c.text for c in retrieved]
     flags: list[bool] = []
     judge_modes: set[str] = set()
@@ -369,7 +398,7 @@ def evaluate_plain_answer(answer_text: str, citations: list[Citation],
     fab = (any(not f for f in flags) if flags else True) or unresolved > 0
     grounded = (sum(flags) / len(flags)) if flags else 0.0
     return {"refused": False, "n_claims": len(claims),
-            "n_supported": sum(flags), "groundedness": grounded,
+            "n_claims_raw": n_raw, "n_supported": sum(flags), "groundedness": grounded,
             "unresolved_citations": unresolved, "fabrication": fab,
             "claims": claims, "supported": flags,
             "extract_mode": extract_mode,

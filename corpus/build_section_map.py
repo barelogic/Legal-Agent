@@ -56,7 +56,13 @@ def extract_repeal_rows(raw: Path) -> list[dict]:
             m = re.search(pattern, text)
             if not m:
                 continue
-            quote = " ".join(m.group(0).split())
+            raw_quote = " ".join(m.group(0).split())
+            # PDF text extraction drops the space at some line breaks
+            # ("herebyrepealed"). The regex above only matches when the
+            # source reads "hereby <space> repealed" modulo extraction
+            # spacing, so restoring the space reproduces the official
+            # wording; the fix is flagged, never silent.
+            quote, n_fix = re.subn(r"herebyrepealed", "hereby repealed", raw_quote)
             rows.append({
                 "old_act": m.group(2),
                 "old_section": None,
@@ -64,6 +70,7 @@ def extract_repeal_rows(raw: Path) -> list[dict]:
                 "new_section": m.group(1),
                 "relation": "repealed-by",
                 "quote": quote,
+                "quote_normalized": bool(n_fix),
                 "source_url": url,
                 "origin": "repeal-section",
             })

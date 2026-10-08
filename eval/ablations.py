@@ -32,7 +32,8 @@ def run_ablations(rows: list[dict], docs: dict, chunks: dict) -> dict:
     out: dict = {}
     for cfg in ABLATIONS:
         answers = [
-            run_system(cfg["system"], r["question"], docs, chunks, top_k=cfg["top_k"])
+            run_system(cfg["system"], r["question"], docs, chunks,
+                       top_k=cfg["top_k"], workflow=r.get("workflow", "chat"))
             for r in rows
         ]
         # Fault-injected answers must pass through the verifier to measure
@@ -50,9 +51,12 @@ def run_ablations(rows: list[dict], docs: dict, chunks: dict) -> dict:
             out[cfg["name"]] = {
                 "system": cfg["system"],
                 "top_k": cfg["top_k"],
+                # Retrieval uses the injected system's own (lexical) retriever,
+                # not full_lexical's: same retriever here, but the row is
+                # labeled for what it measures.
                 "retrieval": retrieval_report(
-                    rows, docs, chunks, systems=("full_lexical_verified",), top_k=cfg["top_k"]
-                )["full_lexical_verified"],
+                    rows, docs, chunks, systems=(cfg["system"],), top_k=cfg["top_k"]
+                )[cfg["system"]],
                 "groundedness": groundedness_report(
                     {cfg["system"]: answers}, rows, docs, chunks
                 )[cfg["system"]],
