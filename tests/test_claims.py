@@ -14,6 +14,11 @@ def test_prompt_contains_sources():
     assert "d::p1::c0" in p and "ONLY" in p
 
 
+def test_prompt_marks_sources_as_data():
+    p = build_prompt("q?", [_ch()])
+    assert "untrusted data" in p and "<SOURCES>" in p
+
+
 def test_parse_ok_and_bad():
     raw = '[{"text": "t", "chunk_ids": ["d::p1::c0"], "quote": "q"}, 42]'
     cs = parse_claims(raw)
