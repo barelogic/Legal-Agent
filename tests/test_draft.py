@@ -136,3 +136,22 @@ def test_load_template_shape(tpl):
     assert load_template("test_bail")["template_id"] == "test_bail"
     with pytest.raises(ValueError):
         load_template("../evil")
+
+
+def test_field_query_single_token_proposes(tpl, monkeypatch):
+    """System-generated field queries retrieve on one shared token
+    ('FIR No. 0789/2026' has no word 'number'); the verifier still decides."""
+    from contracts.schemas import Chunk, Doc
+    from generation.llm import MockClient
+    from retrieval.store import Registry
+    from workflows.draft import run_draft
+
+    reg = Registry()
+    reg.register_doc(Doc(doc_id="c1", title="C", doc_type="case_file"))
+    reg.chunks["c1::p1::c0"] = Chunk(
+        chunk_id="c1::p1::c0", doc_id="c1", text="FIR No. 0789/2026 recorded here.")
+    ans = run_draft(draft_type="test_bail", doc_ids=["c1"],
+                    provided_values={"court": "X"}, registry=reg, llm=MockClient(),
+                    precheck=True)
+    assert "fir_number" not in {m.field for m in ans.missing_info}
+    assert any("0789" in c.text for c in ans.claims)

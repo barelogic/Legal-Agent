@@ -120,7 +120,12 @@ def run_draft(
         if _is_legal_ground(name):
             scope = sorted(set(scope) | set(law_pool))
         query = _field_query(field)
-        retrieved = registry.search(query, top_k=top_k, doc_ids=scope or None)
+        # min_overlap=1: field queries are system-generated ("fir_number FIR
+        # number."), so a chunk saying "FIR No. 0789/2026" shares one token
+        # and must still be *proposed* — the verifier (never retrieval)
+        # decides truth, so this cannot fabricate, only un-hide.
+        retrieved = registry.search(query, top_k=top_k, min_overlap=1,
+                                    doc_ids=scope or None)
         ans = answer_from_chunks(query, "draft", registry, llm, retrieved, flagset=flagset)
         good = verified_only(ans.claims)
         failed_total += len(ans.claims) - len(good)
