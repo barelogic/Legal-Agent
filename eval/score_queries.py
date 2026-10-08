@@ -22,12 +22,21 @@ SYSTEMS = ("full_lexical_verified", "baseline_no_verify", "hybrid_verified",
            "baseline_injected", "baseline_plain_rag")
 
 
-def load_processed_corpus() -> tuple[dict, dict]:
-    """Docs/chunks of the built eval corpus (data/processed/, P1 ingest output)."""
+def try_load_processed_corpus() -> tuple[dict, dict]:
+    """Processed corpus or ({}, {}) when absent (no assert; for auto modes)."""
     from ingest.pipeline import load_chunks, load_docs
 
-    docs = {d.doc_id: d for d in load_docs()}
-    chunks = {c.chunk_id: c for c in load_chunks()}
+    try:
+        docs = {d.doc_id: d for d in load_docs()}
+        chunks = {c.chunk_id: c for c in load_chunks()}
+    except Exception:
+        return {}, {}
+    return docs, chunks
+
+
+def load_processed_corpus() -> tuple[dict, dict]:
+    """Docs/chunks of the built eval corpus (data/processed/, P1 ingest output)."""
+    docs, chunks = try_load_processed_corpus()
     assert docs and chunks, "empty data/processed/; run corpus/build_corpus.py first"
     return docs, chunks
 
@@ -41,9 +50,14 @@ def load_resolved(holdout: bool = False) -> list[dict]:
 
 def score_queries(docs: dict, chunks: dict, top_k: int = 4) -> dict:
     """Run all systems on non-holdout queries. Returns metric dicts."""
+    if not docs or not chunks:
+        return {"skipped": "empty corpus; run corpus/build_corpus.py first",
+                "n": 0, "n_answerable": 0, "retrieval": {}, "groundedness": {},
+                "judge": {}}
     rows = load_resolved(holdout=False)
     assert rows, "empty tunable split; run eval/build_queries.py first"
-    answers = {s: [run_system(s, r["question"], docs, chunks, top_k=top_k)
+    answers = {s: [run_system(s, r["question"], docs, chunks, top_k=top_k,
+                               workflow=r.get("workflow", "chat"))
                    for r in rows] for s in SYSTEMS}
     return {
         "n": len(rows),
@@ -55,8 +69,15 @@ def score_queries(docs: dict, chunks: dict, top_k: int = 4) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    docs, chunks = load_processed_corpus()
+    try:
+        docs, chunks = load_processed_corpus()
+    except AssertionError as e:
+        print(f"score_queries skipped: {e}")
+        return 0
     out = score_queries(docs, chunks)
+    if "skipped" in out:
+        print(json.dumps(out, indent=1))
+        return 0
     print(json.dumps(
         {s: {"retrieval": out["retrieval"][s], "groundedness": out["groundedness"][s]}
          for s in SYSTEMS}, indent=1))

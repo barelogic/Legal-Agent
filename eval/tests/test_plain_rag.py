@@ -59,10 +59,10 @@ def test_verbatim_copy_judged_supported_offline():
 
 
 def test_extractor_and_judge_fallback_modes_logged():
-    claims, emode = extract_atomic_claims(
+    claims, emode, n_raw = extract_atomic_claims(
         "The arrested person shall be released on bail promptly. "
         "The magistrate must record reasons in writing.")
-    assert len(claims) == 2 and emode
+    assert len(claims) == 2 and emode and n_raw == 2
     ok, jmode = judge_claim_supported("bail xyzzy", ["unrelated text here"])
     assert ok is False and jmode
 

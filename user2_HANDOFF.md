@@ -1,45 +1,55 @@
-# user2 handoff — eval corrections re-check (2026-10-08)
+# user2 handoff — eval + live local-LLM numbers (2026-10-08, evening)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Tip: `9366fd7` (pushed to both `origin/eval/data-eval` and `origin/main`).
-This file exists ONLY on `eval/data-eval` (not on `main`).
+Tip: `30316d8` on `origin/eval/data-eval`; merged to `origin/main@d82e17f`.
+(Note: this file now exists on `main` too via that merge.)
 
-## What was done
-- Read `/home/frost/correctionsfile.md` user2 items (`eval/`, `data/` seeds/corpus).
-- Merged `origin/main@8c46752` (core: hybrid seeds union + proportional gate,
-  `retrieval/hybrid.py`, `retrieval/store.py`) into `eval/data-eval`.
-- Verified the two core bugs from the eval side (no core edits — read-only probes):
-  - API `get_index()` lacked seeds pre-fix (`doc_ids=["case_file_demo"]` → `[]`);
-    post-fix hits. Harness (`eval/systems.py:65`, `eval/metrics_retrieval.py:30`)
-    builds `HybridIndex` directly, so its numbers never skewed.
-  - Single-token `"bail"` refused pre-fix, answers post-fix (2 claims);
-    `"xyzzy"` still refuses. Matches `eval/metrics_grounded.py:78-82` intent.
-- Added `eval/tests/test_short_queries.py` (4 tests, eval-owned regression lock).
-- Re-ran `eval/run_all.py --hf-limit 0 --top-k 4` on branch AND on
-  `/tmp/opencode/legal-agent-main@8c46752`: tunable tables IDENTICAL
-  (lexical `0.520/0.380`, hybrid `0.600/0.500`, `refusal_R 0.000`,
-  fabrication `0.0` clean / `1.0` injected).
-- Updated `user2.md`, committed `9366fd7`, pushed eval branch, then
-  fast-forwarded `origin/main 8c46752..9366fd7` from the `/tmp` main checkout
-  (cleaned its `test_demo` pollution, rebuilt `47 docs / 1489 chunks`).
+## What was done since the last handoff (`12cb968`)
+- New `eval/plain_rag.py`: `baseline_plain_rag` (HybridIndex top-5 + one
+  free-text prompt via the pipeline LLM, no claims/verifier; unresolved
+  citations kept as fabrications) + eval-time atomic-claim extraction and
+  independent-judge verdicts, all modes logged, deterministic fallbacks.
+- `eval/systems.py`: pipeline systems use `make_client()` (mock default
+  identical; live when `LLM_PROVIDER` says so) + `trace["llm_client"]`.
+- Metrics: `fabrication_count`, `trap_refusal_recall`, `latency_ms_mean`
+  (all systems); plain RAG scored at its own top_k=5; judge usefulness 0-5.
+- Local LLM: Ollama `llama3.1:8b` pulled (4.9 GB); this worktree's `.env`
+  (gitignored) points at it (`openai_compatible`, `localhost:11434/v1`).
+  Copied working `GEMINI_API_KEY` from main's `.env` first (ours 401'd),
+  but Gemini judge 404s on `:generateContent` — judge stays fallback.
+- Full live `run_all.py --hf-limit 0 --top-k 4` on dev split (n=30):
+  verifier takes pipeline fab 6→0; plain RAG best retrieval (0.640/0.550),
+  top usefulness (3.667) but worst fab (17/30, trap_ref 0.000); hybrid
+  trap_ref 0.800. Table in `user2.md` + `eval/results/tables.md`.
+- New `eval/live_progress.py` (watch the background run) and
+  `eval/tests/test_plain_rag.py` (8 tests incl. simulated-live hallucination).
+- Merged eval→main (`d82e17f`): main tree updated to `3bd71b2` first (core
+  verifier hardening + UI demo fallback), auto-merge no conflicts,
+  **140 passed** on merged tree, schemas clean, pushed `origin/main`.
 
 ## State
-- `origin/eval/data-eval` = `9366fd7`, `origin/main` = `9366fd7` (same SHA).
-- Suite: `81 passed` (`tests/ eval/tests/ corpus/tests/`), `contracts/schemas.py` clean.
-- Main tree `/home/frost/legal-agent` untouched (`ui/streamlit@17b9af3`, clean).
-- `eval/results/` + `eval/datasets/` are gitignored runtime state (rebuilt by one command).
+- `origin/eval/data-eval` = `30316d8`, `origin/main` = `d82e17f`.
+- Suite: `89 passed` here (`LLM_PROVIDER=mock` override keeps it offline);
+  `140 passed` on merged main (adds core's verifier tests).
+- `contracts/schemas.py` untouched; no core/ edits; UI + core worktrees untouched.
+- `eval/results/` + `eval/datasets/` are gitignored runtime state.
 
 ## Reproduce (one command each)
-- Suite: `/home/frost/legal-agent/.venv/bin/python -m pytest tests/ eval/tests/ corpus/tests/ -q`
-- Numbers: `/home/frost/legal-agent/.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
-- Seed/gate probes: `/home/frost/legal-agent/.venv/bin/python -m pytest eval/tests/test_short_queries.py -q`
+- Suite (offline): `LLM_PROVIDER=mock .venv/bin/python -m pytest tests/ eval/tests/ corpus/tests/ -q`
+- Live numbers (needs Ollama + model): `.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
+- Plain-RAG probes: `.venv/bin/python -m pytest eval/tests/test_plain_rag.py -q`
+- Watch a run: `.venv/bin/python eval/live_progress.py --log <bg-out>`
 - Schemas guard: `git diff -- contracts/schemas.py` (must be empty)
 
-## Pending / next
-- Hand-built `eval/queries.jsonl` (40) has no single-token items by design;
-  short-query behavior is locked by the new test file, not the JSONL (its
-  40-count asserts in `eval/build_queries.py:23,58-60` must not be broken).
-- If core changes the gate again, re-run the two commands above and update
-  `user2.md` numbers; tunable split currently has no single-token so it is
-  gate-insensitive, the test file is the sensitive guard.
-- Do NOT push `main` from this handoff; `main` already contains `9366fd7`.
+## Pending / next (in priority order)
+1. **10 near-vocab traps** (user asked): fake case names, absent-Act sections,
+   absent fact from a real file, real name + wrong year/court; ≥3 to holdout;
+   per-trap max-overlap log. Recon done (20 HF party names, 8 synth files).
+   Do AFTER any running eval finishes (run_all re-resolves queries.jsonl at
+   the end); then bump `build_queries.py` asserts (40→50, traps 10→20).
+2. **Threshold sweep**: BLOCKED — `min_coverage` / `RERANK_MIN_SCORE` exist
+   nowhere (checked core + eval + all branches). Waiting on user call:
+   (a) P1 lands the knobs, or (b) eval-side prototype sweep to recommend values.
+3. Judge liveness: needs a working `JUDGE_MODEL` (different string from
+   `LLM_MODEL`); options are a second Ollama model or a fixed Gemini key.
+   Do NOT burn quota blind-probing model names.

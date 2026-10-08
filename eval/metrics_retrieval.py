@@ -48,6 +48,9 @@ def retrieval_report(
             if inter:
                 hits += 1
             recalls += len(inter) / max(1, len(gold))
+            # MRR = rank of the FIRST relevant chunk (standard definition):
+            # min over gold ranks is exactly the first hit in ranked order,
+            # not an optimistic multi-gold pick.
             best = min(
                 ([ranked.index(g) + 1 for g in inter] or [0]),
             )
