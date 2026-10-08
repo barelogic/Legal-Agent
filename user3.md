@@ -1,7 +1,7 @@
 # user3 status — UI + legal content (readable by all agents)
 
 Owner: user3 · Branch: `ui/streamlit` · Worktree: `/home/frost/legal-agent`
-Updated: 2026-10-08, at merge `17b9af3` (origin/main refusal-hardening + corpus merged into UI branch, pushed to `origin/main`).
+Updated: 2026-10-08, at `7ee25ff` (synced to `origin/main` `3bd71b2`, core verifier hardening merged in).
 
 ## Landed on main
 
@@ -16,10 +16,26 @@ Updated: 2026-10-08, at merge `17b9af3` (origin/main refusal-hardening + corpus 
 - `b4747aa` `GET /sources/{chunk_id}` route for the UI source view
   (verbatim `Chunk`, 404 if unknown). Superseded by core's `04d98da`
   (identical content); merge hunks auto-resolved, `zxqv` probe kept.
-- `17b9af3` Merge origin/main into `ui/streamlit`, pushed `ui/streamlit:main`
-  (fast-forward `939d943..17b9af3`). AGENTS.md hand-merged: worktree table
-  + shared-checkout protocol from main, UI↔backend contract from UI side
-  (`GET /sources` marked landed).
+- `17b9af3` + `099745b` + `cf78097` merges from `origin/main` (refusal
+  hardening, corpus, core corrections, DOCX export batch). `AGENTS.md`
+  hand-merged where conflicted (kept both sides); `tests/test_api.py`
+  always keeps the `zxqv` probe side.
+- `f8d76d4` corrections fixes: `_fill_example` on_click callback
+  (double-click crash), `_DATAFRAME_KWARGS` width compat (AppTest-verified).
+- `3a52db8` user-provided distinction: amber `user-provided` badge +
+  asked-question echo; honest `/sources` fallback wording.
+- `ef990ac` draft flow: precheck card (template N-of-M, confidence),
+  missing-info inputs → `provided_values`, draft view (underline + quote
+  hover, `[cN]` chips, red `[MISSING]` / amber `[USER-PROVIDED]`),
+  verifier bar on every result, contradiction side-by-side word-diff.
+- `97a3709` DOCX export (`python-docx` in `ui/requirements.txt`): draft +
+  Still needed + Sources appendix (chunk_id, Doc title, citation, quote);
+  screen parity via shared `draft_segments()`, test-pinned headings.
+- `63008f3` offline fallback: `ui/fixtures/*.json` (chat / precheck /
+  draft / review / refusal valid Answers + `chunks.json` registry) and
+  sidebar "Use fixtures" toggle — every screen works with zero HTTP.
+  (`5bf3fba`/`7ee25ff` sync + trace-reasons tweak are on `ui/streamlit`,
+  not yet merged to `main`.)
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
@@ -29,7 +45,11 @@ Updated: 2026-10-08, at merge `17b9af3` (origin/main refusal-hardening + corpus 
   code); unverifiable claims surface as dropped/refused, never as facts.
 - `GET /sources/{chunk_id}` failure degrades honestly to the verified
   quote with an "unavailable" note — chunk text is never fabricated.
-- 62 tests green at merge landing.
+- Backend still ignores `precheck`/`provided_values` and never populates
+  `missing_info`/`confidence`/`contradictions` — UI derives client-side
+  and labels it; `trace.dropped_reasons` (new in core hardening) now
+  preferred in the verifier bar with source labelled.
+- 118 tests green at latest commit.
 
 ## Corrections fixes (2026-10-08, on `ui/streamlit`, verified here + main)
 
@@ -53,5 +73,9 @@ Updated: 2026-10-08, at merge `17b9af3` (origin/main refusal-hardening + corpus 
 - All: impeccable skill (v4.1.0) installed globally at
   `~/.claude/skills/impeccable/` (OpenCode V2 auto-discovers as
   skill ID `impeccable`); user-level install, repo untouched.
-- Core/eval: nothing blocking from UI side. `ui/streamlit` == `main`
-  content for UI dirs; further UI work branches fresh from `main`.
+- All: ports :8000/:8501 currently serve the tester's
+  `/tmp/opencode/legal-agent-main` worktree — I stood my servers down
+  while `main` is being checked; my UI stays demoable via fixtures.
+- Core: if `missing_info` / `confidence` / `contradictions` /
+  `provided_values` ever get backend support, my views consume them with
+  no UI changes; until then the honest-degrade captions stay.
