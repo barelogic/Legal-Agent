@@ -80,3 +80,63 @@ def test_module_retrieve_uses_seed_corpus():
     h._INDEX = None  # force rebuild from seeds (no processed JSONL in repo)
     hits = retrieve("bail non-bailable", top_k=4)
     assert hits and all(isinstance(s, float) for _, s in hits)
+
+
+def test_label_bonus_counted_once():
+    import pytest as _pytest
+
+    from retrieval.hybrid import HybridIndex
+
+    doc = Doc(doc_id="lb", title="L", doc_type="statute")
+    assert doc
+    c = Chunk(
+        chunk_id="lb::p1::c0",
+        doc_id="lb",
+        text="bail provision text here",
+        section_label="Section 483",
+    )
+    idx = HybridIndex([c])
+    idx._bm25 = None  # force pure-python TF leg (already adds +3)
+    idx._tf_fallback_used = True
+    hits = idx.retrieve("what does Section 483 say")
+    assert hits
+    # RRF of a single list is 1/61; a second +0.05 would show here.
+    assert hits[0][1] == _pytest.approx(1 / 61)
+
+
+def test_hybrid_coverage_gate():
+    # same trap lever on the BM25 leg (2 shared of 8 = 0.25 < 0.32);
+    # explicit 0.0 restores old behaviour
+    idx = _idx()
+    q = "cheating allegations frobnication wugbench xyzzy plugh blargh florp"
+    assert idx.retrieve(q, min_overlap=1) == []
+    assert idx.retrieve(q, min_overlap=1, min_coverage=0.0) != []
+
+
+def test_rerank_cutoff_drops_and_empties(monkeypatch):
+    import sys
+    import types
+
+    import retrieval.hybrid as h
+
+    scores = {"a": 5.0, "b": -2.0, "c": -9.0}
+
+    class _FakeCE:
+        def __init__(self, model):
+            pass
+
+        def predict(self, pairs):
+            return [scores.get(t.split()[-1], 0.0) for _, t in pairs]
+
+    fake = types.ModuleType("sentence_transformers")
+    fake.CrossEncoder = _FakeCE
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake)
+    idx = h.HybridIndex([])
+    idx.by_id = {k: None for k in scores}
+    idx.by_id["a"] = type("C", (), {"text": "x a"})()
+    idx.by_id["b"] = type("C", (), {"text": "x b"})()
+    idx.by_id["c"] = type("C", (), {"text": "x c"})()
+    ranked = [("a", 0.1), ("b", 0.09), ("c", 0.08)]
+    kept = idx._rerank("q", ranked, min_score=0.0)
+    assert [cid for cid, _ in kept] == ["a"]
+    assert idx._rerank("q", ranked, min_score=99.0) == []  # empties -> refuse downstream

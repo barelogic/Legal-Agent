@@ -20,6 +20,18 @@ _STOP = frozenset(
 RRF_K = 60
 
 
+def _rerank_gate_enabled() -> bool:
+    """VERIFY_RERANK env (default on). Off bypasses the reranker entirely.
+
+    Local helper (not workflows.flags) to avoid an import cycle:
+    workflows.flags imports this module for run().
+    """
+    raw = os.getenv("VERIFY_RERANK")
+    if raw is None:
+        return True
+    return raw.strip().lower() not in {"0", "false", "no", "off", ""}
+
+
 def get_retrieval_backend() -> str:
     """lexical (default) or hybrid. Hybrid falls back to lexical when ML is absent."""
     return os.getenv("RETRIEVAL_BACKEND", "lexical").strip().lower() or "lexical"
@@ -65,6 +77,7 @@ class HybridIndex:
         self.persist_dir = Path(persist_dir) if persist_dir else get_chroma_dir()
         self.embed_model = embed_model or get_embed_model()
         self._bm25 = self._build_bm25()
+        self._tf_fallback_used = self._bm25 is None
         self._dense_ok = False
         self._collection = None
         self._reranker = None
@@ -81,22 +94,32 @@ class HybridIndex:
         return BM25Okapi(corpus)
 
     def _bm25_rank(
-        self, query: str, pool_idx: list[int], min_overlap: int = 2
+        self, query: str, pool_idx: list[int], min_overlap: int = 2,
+        min_coverage: float | None = None,
     ) -> list[str]:
         """Lexical leg: rank by BM25, keep docs clearing the overlap gate.
 
         Gate is proportional: required = min(min_overlap, #distinct query
         tokens), so a genuine single-term query must match fully while
-        multi-token noise sharing one term still refuses. Section-label
-        bypass mirrors retrieval/store.py. The dense leg is NOT gated:
-        embeddings match paraphrases that share no tokens by design.
+        multi-token noise sharing one term still refuses. min_coverage
+        (None -> MIN_COVERAGE env) additionally requires that fraction of
+        distinct query tokens in the chunk — the trap lever for queries
+        sharing 3-4 content words. Section-label bypass mirrors
+        retrieval/store.py. The dense leg is NOT gated here: embeddings
+        match paraphrases that share no tokens by design (gated instead by
+        RERANK_MIN_SCORE in _rerank).
         """
+        if min_coverage is None:
+            from generation.config import get_min_coverage
+
+            min_coverage = get_min_coverage()
         if not pool_idx:
             return []
         qtok = _tokens(query)
         if not qtok:
             return []
         required = min(min_overlap, len(set(qtok)))
+        qdistinct = set(qtok)
         qlower = query.lower()
         if self._bm25 is None:  # pure-python TF fallback
             from collections import Counter
@@ -107,7 +130,11 @@ class HybridIndex:
                 cc = Counter(_tokens(self.chunks[i].text))
                 overlap = {t for t in qcount if t in cc}
                 label = self.chunks[i].section_label
-                if len(overlap) < required and not (label and label.lower() in qlower):
+                if label and label.lower() in qlower:
+                    pass  # explicit section ask: skip both gates
+                elif len(overlap) < required:
+                    continue
+                elif len(overlap) / len(qdistinct) < min_coverage:
                     continue
                 s = sum(min(qcount[t], cc[t]) for t in overlap)
                 if label and label.lower() in qlower:
@@ -124,15 +151,19 @@ class HybridIndex:
         # of filtering on score > 0.
         qset = set(qtok)
         ranked = sorted(pool_idx, key=lambda i: (-scores[i], self.chunks[i].chunk_id))
-        return [
-            self.chunks[i].chunk_id
-            for i in ranked
-            if len(qset & set(_tokens(self.chunks[i].text))) >= required
-            or (
-                self.chunks[i].section_label
-                and self.chunks[i].section_label.lower() in qlower
-            )
-        ]
+        out = []
+        for i in ranked:
+            label = self.chunks[i].section_label
+            if label and label.lower() in qlower:
+                out.append(self.chunks[i].chunk_id)  # explicit section ask
+                continue
+            overlap = qset & set(_tokens(self.chunks[i].text))
+            if len(overlap) < required:
+                continue
+            if len(overlap) / len(qset) < min_coverage:
+                continue
+            out.append(self.chunks[i].chunk_id)
+        return out
 
     # -- dense (optional, cached on disk) --------------------------------
     def _dense_enabled(self) -> bool:
@@ -187,9 +218,27 @@ class HybridIndex:
             return []
 
     # -- rerank (optional) ------------------------------------------------
-    def _rerank(self, query: str, ranked: list[tuple[str, float]]) -> list[tuple[str, float]]:
+    def _rerank(
+        self,
+        query: str,
+        ranked: list[tuple[str, float]],
+        min_score: float | None = None,
+    ) -> list[tuple[str, float]]:
+        """Cross-encoder rerank; drop chunks below RERANK_MIN_SCORE.
+
+        The dense leg is ungated by token overlap by design, so this cutoff
+        is its gate: paraphrases the model scores below cutoff are dropped,
+        and an emptied list refuses downstream. Without the reranker lib
+        there is no gate (returned unchanged).
+        """
         if len(ranked) < 2:
             return ranked
+        if min_score is None:
+            if not _rerank_gate_enabled():
+                return ranked
+            from generation.config import get_rerank_min_score
+
+            min_score = get_rerank_min_score()
         try:
             from sentence_transformers import CrossEncoder
 
@@ -198,7 +247,7 @@ class HybridIndex:
             pairs = [(query, self.by_id[cid].text) for cid, _ in ranked]
             scores = self._reranker.predict(pairs)
             out = sorted(zip([c for c, _ in ranked], scores), key=lambda x: -x[1])
-            return [(cid, float(s)) for cid, s in out]
+            return [(cid, float(s)) for cid, s in out if float(s) >= min_score]
         except Exception:
             return ranked
 
@@ -209,6 +258,8 @@ class HybridIndex:
         top_k: int = 8,
         doc_ids: list[str] | None = None,
         min_overlap: int = 2,
+        min_coverage: float | None = None,
+        rerank_min_score: float | None = None,
     ) -> list[tuple[Chunk, float]]:
         """Fuse BM25 + dense via RRF, rerank, return [(Chunk, score)]."""
         allowed = set(doc_ids) if doc_ids else None
@@ -218,17 +269,24 @@ class HybridIndex:
         ]
         if not pool_idx or not _tokens(query):
             return []
+        self._tf_fallback_used = self._bm25 is None
         pool_ids = {self.chunks[i].chunk_id for i in pool_idx}
         pool_docs = {self.chunks[i].doc_id for i in pool_idx}
-        bm25_rank = self._bm25_rank(query, pool_idx, min_overlap=min_overlap)
+        bm25_rank = self._bm25_rank(
+            query, pool_idx, min_overlap=min_overlap, min_coverage=min_coverage
+        )
         dense_rank = [
             cid for cid in self._dense_rank(query, pool_docs, n=max(top_k * 3, 20))
             if cid in pool_ids
         ]
         fused = rrf([r for r in (bm25_rank, dense_rank) if r])
-        # section-label bonus mirrors retrieval/store.py behaviour
-        fused = self._label_bonus(query, fused)
-        final = self._rerank(query, fused[: max(top_k * 3, top_k)])
+        # Section-label bonus, counted ONCE: the TF fallback leg already
+        # adds +3 (mirroring store.py), so skip the fused +0.05 there.
+        if not self._tf_fallback_used:
+            fused = self._label_bonus(query, fused)
+        final = self._rerank(
+            query, fused[: max(top_k * 3, top_k)], min_score=rerank_min_score
+        )
         return [(self.by_id[cid], score) for cid, score in final[:top_k]]
 
     def _label_bonus(
@@ -294,8 +352,12 @@ def retrieve(
     top_k: int = 8,
     doc_ids: list[str] | None = None,
     min_overlap: int = 2,
+    min_coverage: float | None = None,
+    rerank_min_score: float | None = None,
 ) -> list[tuple[Chunk, float]]:
-    """retrieve(query, top_k=8, doc_ids=None, min_overlap=2) -> [(Chunk, score)]."""
+    """retrieve(query, top_k=8, doc_ids=None, min_overlap=2, ...)."""
     return get_index().retrieve(
-        query, top_k=top_k, doc_ids=doc_ids, min_overlap=min_overlap
+        query, top_k=top_k, doc_ids=doc_ids,
+        min_overlap=min_overlap, min_coverage=min_coverage,
+        rerank_min_score=rerank_min_score,
     )

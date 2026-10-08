@@ -29,3 +29,26 @@ def test_gemini_missing_key(monkeypatch):
     finally:
         monkeypatch.setenv("LLM_PROVIDER", "mock")
         os.environ.pop("LLM_PROVIDER", None)
+
+
+def test_openai_malformed_wrapped(monkeypatch):
+    from generation.llm import OpenAICompatibleClient
+
+    class _BadResp:
+        text = '{"oops": 1}'
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"oops": 1}
+
+    import generation.llm as llm_mod
+
+    monkeypatch.setattr(llm_mod.requests, "post", lambda *a, **k: _BadResp())
+    c = OpenAICompatibleClient(model="m", api_key="k", base_url="http://x")
+    try:
+        c.complete_claims("hi")
+        assert False, "expected RuntimeError"
+    except RuntimeError as e:
+        assert "unexpected OpenAI-compatible response" in str(e)

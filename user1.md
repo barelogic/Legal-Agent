@@ -1,7 +1,7 @@
 # user1 status — core / phase 1 (readable by all agents)
 
 Owner: user1 (Core phase-1 owner) · Branch: `core/phase-1` · Worktree: `/home/frost/legal-agent-core`
-Updated: 2026-10-08, at `bdaae51` (hybrid gate; main at `939d943`, pushed to origin).
+Updated: 2026-10-08, at `0c23f62` (verifier hardening; main at `3bd71b2`, pushed to origin).
 
 ## Landed on main (all pushed to origin)
 
@@ -54,6 +54,135 @@ Report: `/home/frost/correctionsfile.md` (main @ `a49f55c`). Both core items fix
   still decides truth; retrieval only proposes. user2 note: single-token
   traps, if any, will now score as answered — check against your intended
   refusal P/R in `eval/metrics_grounded.py`.
+
+## Verifier hardening (2026-10-08, on `core/phase-1`, merged `3bd71b2`, pushed)
+
+Closes the quote-smuggling hole: `verify_claim` checked only that
+`quote` is verbatim in a cited chunk while `claim.text` (model-written)
+was unchecked. New stages in `verify/verifier.py`, all behind env flags
+(`VERIFY_TEXT / VERIFY_ENTAILMENT / VERIFY_CITATION_GATE /
+VERIFY_REGENERATE`, default ON — no A3 flag spec found in repo):
+
+- `verify/textcheck.py`: every number/date/section/money/case/court/
+  proper-span/acronym in `text` must appear in normalised `quote`
+  (verbatim strictness, no fuzzy matching). Single capitalised words and
+  stopwords never extracted; `Section`↔`s.` tolerated on number match;
+  leading `In/Under/...` stripped from spans (killed one real over-refusal).
+- `verify/judge.py`: entailment yes/no/partial at temp 0, only `yes`
+  passes; `LLM_JUDGE_MODEL` else unlike generator; skipped under Mock.
+- `verify/citations.py`: `resolve_raw` doc_id fallback is word-boundary
+  only; `Section N of <Act>` resolves via the Act part; each mention must
+  resolve AND appear in quote/chunk.
+- `workflows/answer.py`: >30% failed → one retry with failure notes,
+  keep-better; `trace` gains `dropped_reasons`, `fallbacks`,
+  `verify_flags`, `regenerated` (trace-dict keys only — no API shape
+  change, `contracts/schemas.py` untouched).
+- `generation/claims.py`: SOURCES marked untrusted data (`<SOURCES>`);
+  instruction-like claim text is dropped by the verifier.
+
+False refusals on `eval/queries.jsonl` answerable (seeds-only registry):
+**12/30 = 40.0%, byte-identical to pre-change baseline** (all 12 are
+empty-retrieval gaps; verifier-caused: none). Suite: **78 passed**.
+
+## Corrections batch 2 (2026-10-08, on `core/phase-1`, unmerged)
+
+Report: `/home/frost/correctionsfile.md` (full-repo sweep, main @ `d82e17f`).
+Decisions taken with user: verified-only `claims` on success (failed stay
+in `trace.dropped_reasons`); minimal fill (`missing_info` on refusal with
+`searched_in`, `confidence`=verified/total, `contradictions` stays `[]` —
+trace-dict/optional fields only, `contracts/schemas.py` untouched).
+
+- Refusal tristate (`no retrieved…` / `model returned no claims` / `all
+  claims failed verification`); `claims=verified` on success.
+- API: `top_k` 1..50 else 422 (incl. explicit `0`); missing key → 503;
+  hybrid failure falls through to lexical with the cause in
+  `trace.fallbacks`; both ingest routes surface `index_note` on rebuild
+  failure; `backend` recorded in trace. Shared `SUFFIXES` import.
+- `claims.py` binds `_chunks` on a per-call copy (race-safe); OpenAI
+  malformed payload wrapped as `RuntimeError` like Gemini.
+- `hf_cases`: bad year → `None` (no 500); empty CNR+meta → indexed
+  `fallback` (no `doc` collisions); `max_scan` documented as scan budget.
+- Hybrid label bonus counted once (TF leg `+3` XOR fused `+0.05`);
+  `--min-overlap` CLI passthrough; statute headings kept in chunk bodies.
+- Dead code: removed zero-caller `get_gemini_key`. KEPT `Registry.get_chunk`
+  /`chunk_map` (user3 fixture test calls `fx.get_chunk`) and
+  `gate_citations` (their tests import it) — removal would break their tree.
+  Dense leg stays ungated by design (flagged before).
+- False refusals: **12/30, identical set to baseline**, verifier-caused none.
+  Suite: **89 passed** (78 + 11 new).
+
+## Relevance gates (2026-10-08, on `core/phase-1`, unmerged)
+
+Trap queries share 3-4 content words, which `min_overlap=2` cannot refuse.
+New levers, all env-configurable (P2 sweep owns the values; held-out split
+never used for tuning):
+
+- `MIN_COVERAGE` (default **0.32**): fraction of distinct query content
+  tokens a chunk must contain (lexical + hybrid BM25 legs; explicit
+  section-label asks bypass). Default from allowed-split analysis on the
+  full 1485-chunk corpus: lowest non-holdout answerable 4/12=0.333 (q025),
+  highest separable non-holdout trap 4/13=0.308 (q007). Separates exactly
+  one trap — the rest need the reranker, honestly reported, not hidden.
+- `RERANK_MIN_SCORE` (default **0.0**, logit sign boundary, pending sweep):
+  cross-encoder cutoff in `HybridIndex._rerank`; emptied list refuses
+  downstream. Dense leg stays token-ungated by design; this cutoff is its
+  only gate (no reranker lib → no gate, as before).
+- `api/main.py`: every fallback now sets `Answer.trace.fallback` (singular
+  reason) + `logger.warning`; the `fallbacks` list is kept.
+- P2 parameter names: `MIN_COVERAGE`, `RERANK_MIN_SCORE`
+  (plus existing `VERIFY_*`, `TOP_K`). Env docs in `.env.example`.
+
+## h001 short-query net (2026-10-08, on `core/phase-1`, unmerged)
+
+Note: `/home/frost/corrections-h001.md` (holdout h001, main @ `c790417`).
+Verdict there is "test artifact, no fix required", but the failure mode is
+real — a 7-word-prefix question missed its gold chunk in a lexical top-4
+(hybrid top-4 had it at rank 1). Fix, not deflection: `answer_question`
+widens the lexical net (`top_k` → max 8) when the query has ≤6 distinct
+content tokens (`SHORT_QUERY_TOKENS/SHORT_QUERY_TOP_K` in
+`workflows/answer.py`; effective value + boost reason in trace). This only
+proposes more candidates — gates + verifier still decide, so it cannot
+fabricate. Chose this over defaulting everything to hybrid (heavier,
+systemic) per the note's own options. Refusals re-measured: **12/30,
+identical set**, verifier-caused none. Suite: **90 passed**.
+
+  Correction to the sweep's "fixes landed" note: `max_scan` does NOT count
+  kept rows only — it is a scan budget over every streamed row *including*
+  skipped ones (see `iter_hf_rows` docstring). Counting kept-only would
+  unbind the 17M-row stream; short filtered ingests are the budget working,
+  fixed by raising `max_scan`, not by code change.
+
+## B1/B2/B3 workflows (2026-10-09, on `core/phase-1`, unmerged)
+
+- `workflows/draft.py` (B1): per required field — user_input fills render
+  `[USER-PROVIDED: field=value]` (never claims) else MissingInfo;
+  otherwise scoped retrieval (`Registry.search` gained a backward-compatible
+  `doc_ids` filter) with `retrieval_query` or name+description fallback,
+  normal claims→verify, sourced only if ≥1 verifies (why_needed=description,
+  searched_in=scope). Names containing "provision"/"grounds" also search
+  statute+judgment docs; section numbers arrive only inside verified claim
+  text. precheck=True returns status text + claims + missing + sourced/required
+  confidence, never refused. Full draft assembles boilerplate fixed_text with
+  `claim [cN]` / `[MISSING: f]` / `[USER-PROVIDED: …]` fills + Sources block
+  (globally renumbered c1..N); refuses only when nothing sourced and no fills.
+- `workflows/review.py` (B2): per-doc claims→verify over the doc's own chunks
+  (verifier still guards every claim), keyword MissingInfo for FIR / charge
+  sheet / remand order / medical report, deterministic regex contradictions
+  (FIR-with-digits, attributed dates, Rs.-amounts, named ages, sections) —
+  cross-doc pairs only, first-pair-per-(attr,docs), real chunk_ids.
+  P2 planted-conflict files are not in this tree, so tests plant inline.
+- `workflows/research.py` (B3): case claims (doc_ids scope) + statute/judgment
+  claims, citations resolved-only by construction; IPC/CrPC/Evidence mentions
+  (±80-char Act window; bare "Section N" skipped) looked up in
+  `corpus/section_map.json` — the real file carries repeal rows only, so the
+  honest default is MissingInfo ("no verified old-to-new mapping available");
+  shown rows must carry source_url (sourceless rows → MissingInfo).
+- Wiring: `flags.run()` dispatches draft/review/research (draft/review
+  default the question; research requires it); `AskIn` gained optional
+  `draft_type/instructions/provided_values/precheck`. Template/map loaders
+  read `$TEMPLATES_DIR`/`$SECTION_MAP_PATH` → core paths → main-tree copies
+  (read-only; tests use fixtures, suite stays hermetic).
+- Suite: **121 passed** (106 + 15 new), schemas untouched.
 
 ## Flags for other areas (not mine to fix)
 

@@ -48,7 +48,14 @@ class Registry:
     def chunk_map(self, chunk_ids: list[str]) -> dict[str, Chunk]:
         return {cid: self.chunks[cid] for cid in chunk_ids if cid in self.chunks}
 
-    def search(self, query: str, top_k: int = 4, min_overlap: int = 2) -> list[Chunk]:
+    def search(
+        self,
+        query: str,
+        top_k: int = 4,
+        min_overlap: int = 2,
+        min_coverage: float | None = None,
+        doc_ids: list[str] | None = None,
+    ) -> list[Chunk]:
         """Rank chunks by content-token overlap. Stopword-only overlap -> [].
 
         min_overlap (default 2) is the refusal lever, scaled to query length:
@@ -56,19 +63,38 @@ class Registry:
         single-term query ('bail') must match fully; multi-token noise sharing
         one term (e.g. near-gibberish with 'quantum') still retrieves nothing
         instead of grounding an answer on noise.
+
+        min_coverage (None -> MIN_COVERAGE env) is the relevance lever for
+        traps sharing 3-4 content words: the fraction of distinct query
+        content tokens present in the chunk must reach it. The section-label
+        bypass skips both gates (an explicit "Section N" ask).
+
+        doc_ids (None -> whole registry) scopes retrieval to one case set;
+        the draft/review workflows use this so a field is sourced only from
+        its own case files.
         """
+        if min_coverage is None:
+            from generation.config import get_min_coverage
+
+            min_coverage = get_min_coverage()
         qtok = _content_tokens(query)
         if not qtok:
             return []
         required = min(min_overlap, len(set(qtok)))
         qcount = Counter(qtok)
+        qdistinct = set(qcount)
+        allowed = set(doc_ids) if doc_ids else None
         scored: list[tuple[int, str]] = []
         for cid, ch in self.chunks.items():
+            if allowed is not None and ch.doc_id not in allowed:
+                continue
             ccount = Counter(_content_tokens(ch.text))
             overlap = {t for t in qcount if t in ccount}
-            if len(overlap) < required and not (
-                ch.section_label and ch.section_label.lower() in query.lower()
-            ):
+            if ch.section_label and ch.section_label.lower() in query.lower():
+                pass  # explicit section ask: skip both gates
+            elif len(overlap) < required:
+                continue
+            elif len(overlap) / len(qdistinct) < min_coverage:
                 continue
             score = sum(min(qcount[t], ccount[t]) for t in overlap)
             # small bonus for section-label match (e.g. "Section 483")
