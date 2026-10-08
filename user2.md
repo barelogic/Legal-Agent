@@ -1,7 +1,74 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-08, corrections re-check vs `origin/main@8c46752` (hybrid seeds union + proportional gate).
+Updated: 2026-10-08, plain-RAG baseline landed (live-capable, fallback numbers reported; live key blocked).
+
+## P1 — first real baseline numbers (dev/tunable split, n=30, 25 answerable)
+
+`eval/results/tables.md` now has all five systems. Reported columns:
+groundedness, fabrication count, recall@k, MRR, trap refusal_R,
+usefulness 0-5, latency_ms, with the mode logged per table.
+
+| system | hit_rate | recall@k | mrr | groundedness | fab_count | trap_ref_R | usefulness/5 | latency_ms |
+|---|---|---|---|---|---|---|---|---|
+| full_lexical_verified | 0.520 | 0.380 | 0.423 | 1.000* | 0 | 0.000 | 2.833 | 33 |
+| baseline_no_verify | 0.520 | 0.380 | 0.423 | 1.000* | 0 | 0.000 | 2.833 | 33 |
+| hybrid_verified | 0.600 | 0.500 | 0.540 | 1.000* | 0 | 0.000 | 2.800 | 83 |
+| baseline_injected (synthetic) | 0.520 | 0.380 | 0.423 | 1.000* | 30 | 0.000 | 2.967 | 33 |
+| baseline_plain_rag | 0.640 | 0.550 | 0.548 | 1.000 | 2 | 0.000 | 3.267 | 90 |
+
+\*verified_rate for claim-pipeline systems; plain RAG shows mean atomic-claim
+support from the independent judge. `baseline_injected` stays labelled synthetic.
+What to read: plain RAG retrieves best (top-5 hybrid) and scores highest on
+usefulness (verbosity + citations reward) while being the ONLY non-synthetic
+system with fabrications (2): both are a bracketed source cross-reference
+("[See sections 478, ...]") reproduced as a citation resolving to no Doc —
+the exact failure the citation gate exists to catch. Trap refusal is 0.000
+for every system: MockClient copies trap-retrieved chunks verbatim, so the
+quote check passes; a live LLM is needed for refusal signal.
+Mode: `mock-fallback` everywhere (see next section) — treat the gap as a
+lower bound; live free text will be worse, never better.
+
+## Live status — BLOCKED on key (P1 action needed for live numbers)
+
+- The harness is live-capable: plain RAG generates via the pipeline LLM
+  (`LLM_PROVIDER/LLM_MODEL` = gemini/`gemini-3.5-flash-lite`), claim-judging
+  via the independent judge (`JUDGE_MODEL` = `gemini-2.5-flash` ≠ pipeline).
+  Every answer logs its mode; tables log `plain_rag_llm` + `judge_mode`.
+- But the key in `.env` returns **HTTP 401** from `generativelanguage`
+  (verified direct call; `OPENAI_API_KEY` is empty too), so `run_all.py`
+  ran fully in `mock-fallback` + `deterministic-fallback` (see table header).
+- Simulated-live test proves the wiring: a hallucinating free-text LLM +
+  fake citation is flagged `fabrication=True, groundedness=0.0` with live
+  modes logged (`eval/tests/test_plain_rag.py::test_simulated_live_hallucination_caught`).
+- To get live numbers: set a working `GEMINI_API_KEY` (or `OPENAI_API_KEY` +
+  `OPENAI_BASE_URL` with `LLM_PROVIDER=openai_compatible`) and run
+  `.venv/bin/python eval/run_all.py --hf-limit 0 --top-k 4`
+  (dev/tunable split only; no holdout is ever scored). Retrieval for the new
+  baseline is HybridIndex top-5; dense leg is attempted but `chromadb` /
+  `sentence-transformers` are not installed, so it runs hybrid-BM25 (logged
+  in trace `backend`).
+
+## What changed (all eval-owned; `contracts/schemas.py` untouched, no core edits)
+
+- NEW `eval/plain_rag.py`: `run_plain_rag` (hybrid top-5 + one free-text
+  prompt, no claims/verifier; unresolved citations KEPT as fabrications),
+  LLM claim extractor + independent-judge claim verdicts with deterministic
+  fallbacks (sentence split; verbatim-or-≥50%-overlap), all modes logged.
+- `eval/systems.py`: `baseline_plain_rag` (top_k fixed 5).
+- `eval/metrics_grounded.py`: plain-RAG eval path, + `fabrication_count`,
+  `trap_refusal_recall`, `latency_ms_mean` for every system.
+- `eval/metrics_retrieval.py`: plain RAG scored at its own top_k=5.
+- `eval/judge.py`: usefulness rescaled 0-2 → **0-5** (rubric in docstring).
+- `eval/run_all.py` + `eval/score_queries.py`: 5 systems; tables show all
+  requested columns; injected stays `(synthetic)`.
+- NEW `eval/tests/test_plain_rag.py` (8 tests). Suite: **89 passed**.
+
+## Checks (this worktree, just now)
+
+- `pytest tests/ eval/tests/ corpus/tests/`: **89 passed** (81 + 8 new).
+- `contracts/schemas.py`: untouched (`git diff` empty).
+- `eval/build_queries.py`: 40/40 resolve against `data/processed/`.
 
 ## Landed on main
 

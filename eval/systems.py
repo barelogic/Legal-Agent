@@ -10,10 +10,13 @@ Uses contracts/schemas.py exactly (Doc, Chunk, Answer, Claim). No schema edits.
 - hybrid_verified: HybridIndex.retrieve + answer_from_chunks + verify.
   Falls back to lexical when ML libs are absent (still a valid ablation:
   reports backend used per query in trace).
+- baseline_plain_rag: plain free-text RAG (eval/plain_rag.py). Hybrid top-5
+  retrieval + ONE free-text prompt via the same live LLM as the pipeline.
+  No claims, no verifier. Eval-time only, the answer is split into atomic
+  claims and judged by the independent judge (see plain_rag.evaluate_*).
 
-All systems share the MockClient so numbers are reproducible with one
-command and offline. Live-LLM runs remain possible via env but are NOT
-the reported numbers (write-up must say which client produced each table).
+All MockClient systems share determinism offline. Live-LLM runs happen when
+LLM_PROVIDER != mock with a working key (mode logged per answer trace).
 """
 
 from __future__ import annotations
@@ -31,7 +34,7 @@ from workflows.answer import REFUSAL, answer_from_chunks, render_text
 
 SystemName = Literal[
     "full_lexical_verified", "baseline_no_verify", "hybrid_verified",
-    "baseline_injected",
+    "baseline_injected", "baseline_plain_rag",
 ]
 
 INJECTED_TEXT = "The court awarded punitive damages of Rs. 999 crore."
@@ -54,7 +57,15 @@ def run_system(
     top_k: int = 4,
     workflow: str = "chat",
 ) -> Answer:
-    """Run one system on one question. Deterministic (MockClient)."""
+    """Run one system on one question. Deterministic offline (MockClient).
+
+    baseline_plain_rag uses the live pipeline LLM when configured, else a
+    deterministic mock fallback (mode in trace["llm_mode"]).
+    """
+    if system == "baseline_plain_rag":
+        from eval.plain_rag import run_plain_rag
+
+        return run_plain_rag(question, docs, chunks, workflow=workflow)
     reg = make_registry(docs, chunks)
     llm = MockClient()
     t0 = time.perf_counter()

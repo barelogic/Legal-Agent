@@ -19,7 +19,7 @@ from eval.metrics_retrieval import retrieval_report
 from eval.systems import run_system
 
 SYSTEMS = ("full_lexical_verified", "baseline_no_verify", "hybrid_verified",
-           "baseline_injected")
+           "baseline_injected", "baseline_plain_rag")
 
 
 def load_processed_corpus() -> tuple[dict, dict]:
