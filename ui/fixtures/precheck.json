@@ -1,0 +1,62 @@
+{
+  "citations": [
+    {
+      "cite_id": "k1",
+      "doc_id": "case_file_demo",
+      "raw": "FIR 0123/2024",
+      "resolved": true
+    }
+  ],
+  "claims": [
+    {
+      "chunk_ids": [
+        "case_file_demo::p1::c0"
+      ],
+      "claim_id": "c1",
+      "quote": "joined investigation on 10.02.2024",
+      "status": "verified",
+      "text": "The accused joined investigation on 10.02.2024."
+    },
+    {
+      "chunk_ids": [
+        "case_file_demo::p1::c0"
+      ],
+      "claim_id": "c2",
+      "quote": "no recovery is pending",
+      "status": "verified",
+      "text": "No recovery is pending in the case."
+    }
+  ],
+  "confidence": 0.5,
+  "contradictions": [],
+  "missing_info": [
+    {
+      "field": "FIR number",
+      "searched_in": [
+        "case_file_demo"
+      ],
+      "why_needed": "links the prayer to the case record"
+    },
+    {
+      "field": "bail provision",
+      "searched_in": [
+        "bnss_2023"
+      ],
+      "why_needed": "grounds need a statutory basis"
+    }
+  ],
+  "refused": false,
+  "refusal_reason": null,
+  "text": "- The accused joined investigation on 10.02.2024. [c1]\n- No recovery is pending in the case. [c2]\n\nSources:\n[c1] case_file_demo::p1::c0: \"joined investigation on 10.02.2024\"\n[c2] case_file_demo::p1::c0: \"no recovery is pending\"",
+  "trace": {
+    "dropped": 0,
+    "latency_ms": 9,
+    "retrieved_chunk_ids": [
+      "case_file_demo::p1::c0"
+    ],
+    "demo_provided_values": {
+      "FIR number": "0123/2024"
+    }
+  },
+  "workflow": "draft"
+}

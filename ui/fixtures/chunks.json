@@ -1,0 +1,72 @@
+{
+  "docs": [
+    {
+      "doc_id": "bnss_2023",
+      "title": "Bharatiya Nagarik Suraksha Sanhita, 2023 (excerpt)",
+      "doc_type": "statute",
+      "citation": "BNSS, 2023",
+      "source_url": null,
+      "year": 2023
+    },
+    {
+      "doc_id": "case_file_demo",
+      "title": "Demo case file FIR No. 0123/2024",
+      "doc_type": "case_file",
+      "citation": null,
+      "source_url": null,
+      "year": 2024
+    },
+    {
+      "doc_id": "sc_bail_2022",
+      "title": "Satender Kumar Antil v. CBI (2022)",
+      "doc_type": "judgment",
+      "citation": "2022 SCC OnLine SC 825",
+      "source_url": null,
+      "year": 2022
+    }
+  ],
+  "chunks": {
+    "bnss_2023::p1::c0": {
+      "chunk_id": "bnss_2023::p1::c0",
+      "doc_id": "bnss_2023",
+      "section_label": "Bail in non-bailable offences",
+      "page": 1,
+      "text": "In non-bailable offences, bail is not a matter of right; the court exercises judicial discretion having regard to the nature of the accusation and the severity of the punishment."
+    },
+    "bnss_2023::p2::c1": {
+      "chunk_id": "bnss_2023::p2::c1",
+      "doc_id": "bnss_2023",
+      "section_label": "Arrest without warrant",
+      "page": 2,
+      "text": "A police officer may arrest without warrant where there is reason to believe that the person has committed a cognizable offence."
+    },
+    "case_file_demo::p1::c0": {
+      "chunk_id": "case_file_demo::p1::c0",
+      "doc_id": "case_file_demo",
+      "section_label": "Investigation status",
+      "page": 1,
+      "text": "FIR No. 0123/2024 dated 02.02.2024 records that the accused joined investigation on 10.02.2024 and no recovery is pending."
+    },
+    "case_file_demo::p1::c9": {
+      "chunk_id": "case_file_demo::p1::c9",
+      "doc_id": "case_file_demo",
+      "section_label": "Custody memo",
+      "page": 1,
+      "text": "Custody memo records custody of ten days from 03.02.2024."
+    },
+    "case_file_demo::p2::c3": {
+      "chunk_id": "case_file_demo::p2::c3",
+      "doc_id": "case_file_demo",
+      "section_label": "Remand application",
+      "page": 2,
+      "text": "Remand application states custody of twelve days was sought."
+    },
+    "sc_bail_2022::p14::c2": {
+      "chunk_id": "sc_bail_2022::p14::c2",
+      "doc_id": "sc_bail_2022",
+      "section_label": "Para 14",
+      "page": 14,
+      "text": "Arrest is not mandatory in every cognizable offence; the police must record reasons in writing while making an arrest."
+    }
+  }
+}

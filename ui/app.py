@@ -17,6 +17,7 @@ import streamlit as st
 
 from contracts.schemas import Answer
 from ui import api_client
+from ui import fixtures as fx
 from ui.render import (
     TEMPLATE_IDS,
     USER_VALUE_CSS,
@@ -76,8 +77,33 @@ def _base() -> str:
     return st.session_state.get("api_base", api_client.base_url())
 
 
+def _fixtures_on() -> bool:
+    return bool(st.session_state.get("use_fixtures", False))
+
+
+def _get_chunk(chunk_id: str):
+    """Chunk fetch honoring fixture mode (same RuntimeError contract)."""
+    if _fixtures_on():
+        return fx.get_chunk(chunk_id)
+    return api_client.get_source(chunk_id, base=_base())
+
+
 def _sidebar() -> tuple[dict, dict]:
     st.sidebar.title("Backend")
+    st.sidebar.toggle("Use fixtures (offline demo)", key="use_fixtures",
+                      help="Serve bundled fixture Answers + chunks; no backend calls.")
+    if _fixtures_on():
+        docs, _ = fx.load_registry()
+        by_id = docs_by_id(docs)
+        st.sidebar.success("● Fixture mode · answers + chunks bundled, backend untouched")
+        st.sidebar.header("1 · Documents & case set")
+        st.sidebar.caption("Upload needs the live backend — turn off fixtures to ingest.")
+        st.sidebar.caption("Corpus (fixture registry)")
+        for d in docs:
+            extra = f" · {d.citation}" if d.citation else ""
+            st.sidebar.caption(f"`{d.doc_id}` — {d.title} ({d.doc_type}){extra}")
+        st.sidebar.caption("Doc filter applies to the live backend only.")
+        return by_id, {"docs": docs}
     st.sidebar.text_input("API base URL (mock → real switch)", value=_base(), key="api_base")
     base = _base()
     try:
@@ -145,13 +171,18 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
             st.warning("Type a question first.")
             return
         try:
-            with st.spinner("Retrieving → claiming → verifying…"):
-                ans = api_client.post_answer(
-                    q, workflow=workflow,  # type: ignore[arg-type]
-                    top_k=st.session_state.get("top_k", 4),
-                    doc_ids=st.session_state.get("case_set") or None,
-                    base=_base(),
-                )
+            if _fixtures_on():
+                ans = fx.load_answer(fx.WORKFLOW_FIXTURE[workflow])
+                for k in [k for k in st.session_state if k.startswith(f"pv-{workflow}-")]:
+                    del st.session_state[k]
+            else:
+                with st.spinner("Retrieving → claiming → verifying…"):
+                    ans = api_client.post_answer(
+                        q, workflow=workflow,  # type: ignore[arg-type]
+                        top_k=st.session_state.get("top_k", 4),
+                        doc_ids=st.session_state.get("case_set") or None,
+                        base=_base(),
+                    )
             st.session_state.setdefault("answers", {})[workflow] = ans.model_dump()
             st.session_state.setdefault("questions", {})[workflow] = q
             st.session_state.pop("selected", None)
@@ -164,14 +195,19 @@ def _ask_tab(workflow: str, by_id: dict) -> None:
                 st.warning("Type a question first.")
             else:
                 try:
-                    with st.spinner("Prechecking draft readiness…"):
-                        ans = api_client.post_answer(
-                            q, workflow="draft",
-                            top_k=st.session_state.get("top_k", 4),
-                            doc_ids=st.session_state.get("case_set") or None,
-                            precheck=True,
-                            base=_base(),
-                        )
+                    if _fixtures_on():
+                        ans = fx.load_answer("precheck")
+                        for k in [k for k in st.session_state if k.startswith("pv-draft-")]:
+                            del st.session_state[k]
+                    else:
+                        with st.spinner("Prechecking draft readiness…"):
+                            ans = api_client.post_answer(
+                                q, workflow="draft",
+                                top_k=st.session_state.get("top_k", 4),
+                                doc_ids=st.session_state.get("case_set") or None,
+                                precheck=True,
+                                base=_base(),
+                            )
                     st.session_state.setdefault("answers", {})["draft"] = ans.model_dump()
                     st.session_state.setdefault("questions", {})["draft"] = q
                     st.session_state.pop("selected", None)
@@ -235,7 +271,7 @@ def _render_source_panel(answer: Answer, by_id: dict, workflow: str) -> None:
         for chunk_id in claim.chunk_ids:
             st.divider()
             try:
-                chunk = api_client.get_source(chunk_id, base=_base())
+                chunk = _get_chunk(chunk_id)
                 doc = by_id.get(chunk.doc_id)
                 st.markdown(f"**{doc.title if doc else chunk.doc_id}**" + (f" · p.{chunk.page}" if chunk.page else ""))
                 if chunk.section_label:
@@ -300,7 +336,9 @@ def _render_precheck_card(answer: Answer) -> None:
         st.markdown(f"- {line}")
 
 
-def _render_missing_panel(answer: Answer, workflow: str) -> dict[str, str]:
+def _render_missing_panel(
+    answer: Answer, workflow: str, defaults: dict[str, str] | None = None
+) -> dict[str, str]:
     """One input box per missing field; returns current non-empty values."""
     st.subheader("Missing info — supply values")
     st.caption(
@@ -309,7 +347,8 @@ def _render_missing_panel(answer: Answer, workflow: str) -> dict[str, str]:
         "does not consume them yet)."
     )
     for m in answer.missing_info:
-        st.text_input(m.field, key=f"pv-{workflow}-{m.field}", help=m.why_needed)
+        st.text_input(m.field, key=f"pv-{workflow}-{m.field}", help=m.why_needed,
+                      value=(defaults or {}).get(m.field, ""))
         searched = ", ".join(f"`{d}`" for d in m.searched_in) or "_nothing searched_"
         st.caption(f"{m.why_needed} (searched: {searched})")
     return {
@@ -374,7 +413,7 @@ def _render_contradictions(answer: Answer) -> None:
             fetched: dict[str, object | None] = {}
             for cid in (k.claim_a, k.claim_b):
                 try:
-                    fetched[cid] = api_client.get_source(cid, base=_base())
+                    fetched[cid] = _get_chunk(cid)
                 except RuntimeError:
                     fetched[cid] = None
             vm = contradiction_view_model(k, fetched)
@@ -425,9 +464,12 @@ def _render_result(answer: Answer, by_id: dict, workflow: str) -> None:
         _render_precheck_card(answer)
         provided: dict[str, str] = {}
         if answer.missing_info:
-            provided = _render_missing_panel(answer, workflow)
+            defaults = fx.demo_provided_values(answer) if _fixtures_on() else None
+            provided = _render_missing_panel(answer, workflow, defaults)
             if st.button("Draft with provided values", key=f"redraft-{workflow}"):
                 vals = {k: v for k, v in provided.items() if v}
+                if _fixtures_on():
+                    st.rerun()
                 try:
                     with st.spinner("Re-drafting with your values…"):
                         ans = api_client.post_answer(

@@ -35,6 +35,16 @@ streamlit run ui/app.py
 6. (If time) Sidebar → upload a `.txt` (`case_file`), re-ask — new doc
    appears in corpus list and answers cite it.
 
+## Offline fallback (no backend / no LLM key)
+
+Sidebar → **Use fixtures**: every tab serves bundled `ui/fixtures/*.json`
+(a precheck with missing_info, a draft with a placeholder + a prefilled
+user value, a review with a contradiction, a refusal, a chat answer) with
+chunks from `ui/fixtures/chunks.json`. Zero HTTP calls — if the network or
+LLM API fails mid-demo, flip this and carry on. Fixture validity (quotes
+verbatim in cited chunks, all ids resolve) is pinned by
+`tests/test_ui_fixtures.py`.
+
 ## What to say
 
 - "Final text is rendered FROM verified claims only — model free text is
