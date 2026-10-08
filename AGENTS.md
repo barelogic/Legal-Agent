@@ -5,14 +5,23 @@ be traceable to a retrieved source. A single fabricated fact fails us.
 
 ## Who works here
 
-| User | Area | Branch |
-| --- | --- | --- |
-| Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `main` |
-| user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `main` for now → own branch soon |
-| user3 | UI (new `ui/` dir) | own branch |
+| User | Area | Branch | Worktree |
+| --- | --- | --- | --- |
+| Core (phase 1 owner) | `api/ contracts/ generation/ ingest/ retrieval/ verify/ workflows/` | `core/phase-1` | `/home/frost/legal-agent-core` |
+| user2 | eval harness + general data work (`eval/`, `data/` seeds/corpus) | `eval/data-eval` | `/home/frost/legal-agent-eval` |
+| user3 | UI + legal content (`ui/`, `templates/`, `docs/`) | `ui/streamlit` | `/home/frost/legal-agent` (main tree) |
 
 All commits share one git username, so **branches — not authors — separate work**.
-user2: move off `main` as soon as your eval scaffold exists.
+
+## Shared-checkout protocol (3 users, 1 machine)
+
+- Work only inside your worktree, on your branch. Never `checkout` or commit
+  on another user's branch.
+- Before altering any shared/tracked file: run `git status` plus
+  `git branch --show-current` first. If the tree shows another user's
+  uncommitted work or a surprise branch, stop and ask before editing.
+- All trees share one venv: `/home/frost/legal-agent/.venv/bin/python -m ...`.
+- `main` takes merges only, never direct feature work.
 
 ## Non-negotiable grounding policy
 

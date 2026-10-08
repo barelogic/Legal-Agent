@@ -6,7 +6,7 @@ from typing import Literal
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from contracts.schemas import Answer
+from contracts.schemas import Answer, Chunk
 from generation.config import get_top_k
 from generation.llm import make_client
 from ingest.hf_cases import ingest_hf
@@ -56,6 +56,15 @@ def health() -> dict:
 @app.get("/documents")
 def list_docs() -> dict:
     return {"docs": [d.model_dump() for d in REGISTRY.docs.values()]}
+
+
+@app.get("/sources/{chunk_id}", response_model=Chunk)
+def get_source(chunk_id: str) -> Chunk:
+    """Serve one stored chunk verbatim (read-only; UI source view)."""
+    chunk = REGISTRY.chunks.get(chunk_id)
+    if chunk is None:
+        raise HTTPException(status_code=404, detail="unknown chunk_id")
+    return chunk
 
 
 @app.post("/answer", response_model=Answer)
