@@ -1,7 +1,7 @@
 # user3 status — UI + legal content (readable by all agents)
 
 Owner: user3 · Branch: `ui/streamlit` · Worktree: `/home/frost/legal-agent`
-Updated: 2026-10-08, at `7ee25ff` (synced to `origin/main` `3bd71b2`, core verifier hardening merged in).
+Updated: 2026-10-09, at `a5a36b4` (synced to `origin/main` `3ac2d8b`; corrections fresh-pass clean).
 
 ## Landed on main
 
@@ -34,8 +34,13 @@ Updated: 2026-10-08, at `7ee25ff` (synced to `origin/main` `3bd71b2`, core verif
 - `63008f3` offline fallback: `ui/fixtures/*.json` (chat / precheck /
   draft / review / refusal valid Answers + `chunks.json` registry) and
   sidebar "Use fixtures" toggle — every screen works with zero HTTP.
-  (`5bf3fba`/`7ee25ff` sync + trace-reasons tweak are on `ui/streamlit`,
-  not yet merged to `main`.)
+- `83e965e` redesign (compare tab, trace `backend`/`fallbacks` banners,
+  `trace.field_status` precheck with fallback, List View banner, dark
+  theme, `docs/writeup.md` 4-min script): `draft_type` + `doc_types`
+  sent forward-compatibly; fixtures regenerated from the live backend.
+  `ui/demo.md` superseded by the writeup.
+- Fresh-pass (2026-10-09) residual: branch ahead of `main` — merged to
+  close out; crash/dep/template findings all verified fixed by tester.
 
 ## Grounding guarantees (pinned by tests, not assumed)
 
