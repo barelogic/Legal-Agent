@@ -124,3 +124,27 @@ def test_regenerate_keeps_better_result():
     assert ans.trace["regenerated"] is True
     assert not ans.refused
     assert any(c.status == "verified" for c in ans.claims)
+
+
+def test_short_query_widens_lexical_net():
+    from generation.llm import MockClient
+    from retrieval.store import Registry
+    from contracts.schemas import Chunk, Doc
+    from workflows.answer import SHORT_QUERY_TOP_K, answer_question
+
+    reg = Registry()
+    reg.register_doc(Doc(doc_id="d", title="D", doc_type="statute"))
+    for i in range(10):
+        reg.chunks[f"d::p1::c{i}"] = Chunk(
+            chunk_id=f"d::p1::c{i}", doc_id="d", text=f"bail provision note number {i}"
+        )
+    short = answer_question("bail provision note?", "chat", reg, MockClient(), top_k=4)
+    assert short.trace["top_k_effective"] == SHORT_QUERY_TOP_K
+    assert "top_k_boost" in short.trace
+    assert len(short.trace["retrieved_chunk_ids"]) > 4
+    long_q = answer_question(
+        "under what detailed circumstances is bail granted in non-bailable offences involving cheating allegations",
+        "chat", reg, MockClient(), top_k=4,
+    )
+    assert long_q.trace["top_k_effective"] == 4
+    assert "top_k_boost" not in long_q.trace

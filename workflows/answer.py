@@ -15,7 +15,7 @@ from typing import Literal
 
 from contracts.schemas import Answer, Chunk, Claim, MissingInfo
 from generation.claims import generate_claims
-from retrieval.store import Registry
+from retrieval.store import Registry, _content_tokens
 from verify import flags as vflags
 from verify.citations import build_citations
 from verify.judge import is_mock_client, make_judge_client
@@ -24,6 +24,12 @@ from verify.verifier import verify_all
 Workflow = Literal["chat", "draft", "review", "research"]
 REFUSAL = "Not found in the provided sources"
 REGEN_FAIL_FRACTION = 0.30
+# Short queries carry little signal: a 7-word prefix can miss its own chunk
+# in a top-4 lexical net (see corrections-h001.md). Widen the net for them.
+# This only proposes more candidates — gates + verifier still decide, so it
+# cannot fabricate, only un-refuse when evidence exists.
+SHORT_QUERY_TOKENS = 6
+SHORT_QUERY_TOP_K = 8
 
 
 def render_text(claims: list[Claim]) -> str:
@@ -42,11 +48,27 @@ def answer_question(
     registry: Registry,
     llm,
     top_k: int = 4,
+    min_coverage: float | None = None,
+    short_boost: bool = True,
+    flagset: dict[str, bool] | None = None,
 ) -> Answer:
     """Full grounded pipeline returning an Answer model."""
     t0 = time.perf_counter()
-    retrieved: list[Chunk] = registry.search(question, top_k=top_k)
-    return answer_from_chunks(question, workflow, registry, llm, retrieved, t0=t0)
+    effective_top_k = top_k
+    if short_boost and len(set(_content_tokens(question))) <= SHORT_QUERY_TOKENS:
+        effective_top_k = max(top_k, SHORT_QUERY_TOP_K)
+    retrieved: list[Chunk] = registry.search(
+        question, top_k=effective_top_k, min_coverage=min_coverage
+    )
+    ans = answer_from_chunks(
+        question, workflow, registry, llm, retrieved, t0=t0, flagset=flagset
+    )
+    ans.trace["top_k_effective"] = effective_top_k
+    if effective_top_k != top_k:
+        ans.trace["top_k_boost"] = (
+            f"short query: top_k {top_k} -> {effective_top_k}"
+        )
+    return ans
 
 
 def answer_from_chunks(
@@ -56,11 +78,12 @@ def answer_from_chunks(
     llm,
     retrieved: list[Chunk],
     t0: float | None = None,
+    flagset: dict[str, bool] | None = None,
 ) -> Answer:
     """Grounded pipeline over pre-retrieved chunks (e.g. hybrid retrieval)."""
     t0 = t0 if t0 is not None else time.perf_counter()
     chunk_map = {c.chunk_id: c for c in retrieved}
-    flagset = vflags.all_flags()
+    flagset = flagset if flagset is not None else vflags.all_flags()
 
     judge_client, judge_note = None, None
     if flagset["entailment"]:
@@ -93,12 +116,15 @@ def answer_from_chunks(
 
     citations = build_citations(verified, chunk_map, registry.docs)
     ms = int((time.perf_counter() - t0) * 1000)
+    verify4 = {k: flagset.get(k, True) for k in (
+        "verify_text", "entailment", "citation_gate", "regenerate")}
     trace = {
         "retrieved_chunk_ids": [c.chunk_id for c in retrieved],
         "dropped": len(failed),
         "dropped_reasons": [f"{c.claim_id}: {c.verifier_note}" for c in failed],
         "fallbacks": fallbacks,
-        "verify_flags": flagset,
+        "flags": dict(flagset),
+        "verify_flags": verify4,
         "regenerated": regenerated,
         "latency_ms": ms,
     }

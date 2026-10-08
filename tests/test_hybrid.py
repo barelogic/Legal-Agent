@@ -102,3 +102,135 @@ def test_label_bonus_counted_once():
     assert hits
     # RRF of a single list is 1/61; a second +0.05 would show here.
     assert hits[0][1] == _pytest.approx(1 / 61)
+
+
+def test_hybrid_coverage_gate():
+    # same trap lever on the BM25 leg (2 shared of 8 = 0.25 < 0.32);
+    # explicit 0.0 restores old behaviour
+    idx = _idx()
+    q = "cheating allegations frobnication wugbench xyzzy plugh blargh florp"
+    assert idx.retrieve(q, min_overlap=1) == []
+    assert idx.retrieve(q, min_overlap=1, min_coverage=0.0) != []
+
+
+def test_rerank_cutoff_drops_and_empties(monkeypatch):
+    import sys
+    import types
+
+    import retrieval.hybrid as h
+
+    scores = {"a": 5.0, "b": -2.0, "c": -9.0}
+
+    class _FakeCE:
+        def __init__(self, model):
+            pass
+
+        def predict(self, pairs):
+            return [scores.get(t.split()[-1], 0.0) for _, t in pairs]
+
+    fake = types.ModuleType("sentence_transformers")
+    fake.CrossEncoder = _FakeCE
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake)
+    idx = h.HybridIndex([])
+    idx.by_id = {k: None for k in scores}
+    idx.by_id["a"] = type("C", (), {"text": "x a"})()
+    idx.by_id["b"] = type("C", (), {"text": "x b"})()
+    idx.by_id["c"] = type("C", (), {"text": "x c"})()
+    ranked = [("a", 0.1), ("b", 0.09), ("c", 0.08)]
+    kept = idx._rerank("q", ranked, min_score=0.0)
+    assert [cid for cid, _ in kept] == ["a"]
+    assert idx._rerank("q", ranked, min_score=99.0) == []  # empties -> refuse downstream
+
+
+def test_embed_device_env(monkeypatch):
+    import retrieval.hybrid as h
+
+    monkeypatch.setenv("EMBED_DEVICE", "cpu")
+    assert h.get_embed_device() == "cpu"
+    monkeypatch.delenv("EMBED_DEVICE")
+    assert h.get_embed_device() is None
+
+
+def test_dense_failure_warns_not_silent(monkeypatch, caplog):
+    import logging
+
+    import retrieval.hybrid as h
+
+    class _Boom:
+        def __init__(self, *a, **k):
+            raise RuntimeError("CUDA OOM")
+
+    monkeypatch.setattr(h, "SentenceTransformer", _Boom, raising=False)
+    import sys
+    import types
+
+    if "sentence_transformers" not in sys.modules:
+        fake = types.ModuleType("sentence_transformers")
+        fake.SentenceTransformer = _Boom
+        monkeypatch.setitem(sys.modules, "sentence_transformers", fake)
+    else:
+        monkeypatch.setattr(sys.modules["sentence_transformers"], "SentenceTransformer", _Boom)
+    if "chromadb" not in sys.modules:
+        fake2 = types.ModuleType("chromadb")
+        fake2.PersistentClient = lambda **k: None
+        monkeypatch.setitem(sys.modules, "chromadb", fake2)
+    idx = h.HybridIndex([], embed_model="x")
+    idx.chunks = [type("C", (), {"chunk_id": "d::p1::c0", "doc_id": "d", "text": "t", "page": 1})()]
+    with caplog.at_level(logging.WARNING, logger="retrieval.hybrid"):
+        assert idx._ensure_dense() is False
+    assert any("dense leg disabled" in r.message for r in caplog.records)
+
+
+def test_ensure_dense_ids_all_chunks(monkeypatch, tmp_path):
+    """Regression: _ensure_dense referenced an undefined `c` (NameError),
+    so the dense leg NEVER engaged — every hybrid run was BM25-only."""
+    import sys
+    import types
+
+    import retrieval.hybrid as h
+    from contracts.schemas import Chunk
+
+    seen_ids = {}
+
+    class _FakeModel:
+        def __init__(self, *a, **k):
+            pass
+
+        def encode(self, texts, **k):
+            class _A(list):
+                def tolist(self):
+                    return list(self)
+
+            return _A([[float(len(t))] * 4 for t in texts])
+
+    class _FakeCol:
+        def get(self, ids=None):
+            seen_ids["got"] = list(ids or [])
+            return {"ids": []}
+
+        def add(self, **k):
+            seen_ids["added"] = list(k["ids"])
+
+        def query(self, **k):
+            return {"ids": [[]]}
+
+    class _FakeClient:
+        def __init__(self, **k):
+            pass
+
+        def get_or_create_collection(self, name):
+            return _FakeCol()
+
+    fake_st = types.ModuleType("sentence_transformers")
+    fake_st.SentenceTransformer = _FakeModel
+    fake_st.CrossEncoder = type("CE", (), {"__init__": lambda s, m: None})
+    fake_chroma = types.ModuleType("chromadb")
+    fake_chroma.PersistentClient = _FakeClient
+    monkeypatch.setitem(sys.modules, "sentence_transformers", fake_st)
+    monkeypatch.setitem(sys.modules, "chromadb", fake_chroma)
+
+    chunks = [Chunk(chunk_id=f"d::p1::c{i}", doc_id="d", text=f"chunk text {i}") for i in range(3)]
+    idx = h.HybridIndex(chunks, persist_dir=tmp_path, embed_model="fake-model")
+    assert idx._ensure_dense() is True
+    assert seen_ids["got"] == [c.chunk_id for c in chunks]
+    assert seen_ids["added"] == [c.chunk_id for c in chunks]

@@ -1,19 +1,21 @@
 """FastAPI entrypoint: grounded legal assistant (refuse-by-default)."""
 
+import logging
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
+logger = logging.getLogger(__name__)
+
 from contracts.schemas import Answer, Chunk
-from generation.config import get_top_k
 from generation.llm import make_client
 from ingest.hf_cases import ingest_hf
 from ingest.pipeline import DOC_TYPES, SUFFIXES, ingest_file, load_chunks, load_docs
 from ingest.seed import load_seeds
-from retrieval.hybrid import get_retrieval_backend, rebuild_index, retrieve
-from workflows.answer import answer_from_chunks, answer_question
+from retrieval.hybrid import rebuild_index
+from workflows.flags import run
 
 app = FastAPI(title="Legal Agent (grounded)")
 
@@ -40,6 +42,20 @@ class AskIn(BaseModel):
     workflow: Literal["chat", "draft", "review", "research"] = "chat"
     top_k: int | None = None
     doc_ids: list[str] | None = None
+    # I1: optional per-request flag overrides (None = server default).
+    # Backward compatible: absent fields behave exactly as before.
+    verify_text: bool | None = None
+    entailment: bool | None = None
+    citation_gate: bool | None = None
+    regenerate: bool | None = None
+    coverage: bool | None = None
+    rerank: bool | None = None
+    short_boost: bool | None = None
+    # Draft/review/research inputs (optional, backward compatible).
+    draft_type: str | None = None
+    instructions: str | None = None
+    provided_values: dict | None = None
+    precheck: bool | None = None
 
 
 class HfIn(BaseModel):
@@ -69,44 +85,22 @@ def get_source(chunk_id: str) -> Chunk:
 
 @app.post("/answer", response_model=Answer)
 def post_answer(body: AskIn) -> Answer:
-    """Grounded answer: retrieve -> structured claims -> verify -> render/refuse."""
-    if not body.question.strip():
+    """Grounded answer: same run() entry the eval harness uses."""
+    if not body.question.strip() and body.workflow not in ("draft", "review"):
         raise HTTPException(status_code=422, detail="question must not be empty")
     if body.top_k is not None and not 1 <= body.top_k <= 50:
-        raise HTTPException(status_code=422, detail="top_k must be 1..50")
-    top_k = body.top_k or get_top_k()
-    if not 1 <= top_k <= 50:  # misconfigured TOP_K env
         raise HTTPException(status_code=422, detail="top_k must be 1..50")
     try:
         llm = make_client()  # generate_claims binds retrieved chunks for mock
     except RuntimeError as e:
         # Missing API key / bad provider config: server-side, not a bad query.
         raise HTTPException(status_code=503, detail=str(e))
-    if body.doc_ids or get_retrieval_backend() == "hybrid":
-        try:
-            hits = retrieve(body.question, top_k=top_k, doc_ids=body.doc_ids)
-            ans = answer_from_chunks(
-                body.question, body.workflow, REGISTRY, llm, [c for c, _ in hits]
-            )
-            ans.trace["backend"] = "hybrid"
-            return ans
-        except HTTPException:
-            raise
-        except Exception as e:
-            cause = f"hybrid failed ({e}); falling through to lexical"
-            try:
-                ans = answer_question(body.question, body.workflow, REGISTRY, llm, top_k=top_k)
-            except Exception as e2:
-                raise HTTPException(status_code=503, detail=f"LLM/retrieval failed: {e2}")
-            ans.trace["backend"] = "lexical"
-            ans.trace.setdefault("fallbacks", []).append(cause)
-            return ans
     try:
-        ans = answer_question(body.question, body.workflow, REGISTRY, llm, top_k=top_k)
+        return run(body.workflow, body, registry=REGISTRY, llm=llm)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=503, detail=f"LLM/retrieval failed: {e}")
-    ans.trace["backend"] = "lexical"
-    return ans
 
 
 @app.post("/ingest")
@@ -137,11 +131,13 @@ def post_ingest(
         rebuild_index()
     except Exception as e:
         # Best-effort: lexical registry already updated; surface, don't swallow.
+        note = f"hybrid index rebuild failed: {e}"
+        logger.warning("ingest: %s", note)
         resp = {
             "doc": doc.model_dump(),
             "num_chunks": len(chunks),
             "chunk_ids": [c.chunk_id for c in chunks],
-            "index_note": f"hybrid index rebuild failed: {e}",
+            "index_note": note,
         }
         return resp
     return {
@@ -173,11 +169,13 @@ def post_ingest_hf(body: HfIn) -> dict:
         rebuild_index()
     except Exception as e:
         # Best-effort: registry already updated; surface, don't swallow.
+        note = f"hybrid index rebuild failed: {e}"
+        logger.warning("ingest/hf: %s", note)
         return {
             "num_docs": len(docs),
             "num_chunks": len(chunks),
             "doc_ids": [d.doc_id for d in docs],
-            "index_note": f"hybrid index rebuild failed: {e}",
+            "index_note": note,
         }
     return {
         "num_docs": len(docs),

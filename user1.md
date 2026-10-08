@@ -111,11 +111,96 @@ trace-dict/optional fields only, `contracts/schemas.py` untouched).
 - False refusals: **12/30, identical set to baseline**, verifier-caused none.
   Suite: **89 passed** (78 + 11 new).
 
+## Relevance gates (2026-10-08, on `core/phase-1`, unmerged)
+
+Trap queries share 3-4 content words, which `min_overlap=2` cannot refuse.
+New levers, all env-configurable (P2 sweep owns the values; held-out split
+never used for tuning):
+
+- `MIN_COVERAGE` (default **0.32**): fraction of distinct query content
+  tokens a chunk must contain (lexical + hybrid BM25 legs; explicit
+  section-label asks bypass). Default from allowed-split analysis on the
+  full 1485-chunk corpus: lowest non-holdout answerable 4/12=0.333 (q025),
+  highest separable non-holdout trap 4/13=0.308 (q007). Separates exactly
+  one trap — the rest need the reranker, honestly reported, not hidden.
+- `RERANK_MIN_SCORE` (default **0.0**, logit sign boundary, pending sweep):
+  cross-encoder cutoff in `HybridIndex._rerank`; emptied list refuses
+  downstream. Dense leg stays token-ungated by design; this cutoff is its
+  only gate (no reranker lib → no gate, as before).
+- `api/main.py`: every fallback now sets `Answer.trace.fallback` (singular
+  reason) + `logger.warning`; the `fallbacks` list is kept.
+- P2 parameter names: `MIN_COVERAGE`, `RERANK_MIN_SCORE`
+  (plus existing `VERIFY_*`, `TOP_K`). Env docs in `.env.example`.
+
+## h001 short-query net (2026-10-08, on `core/phase-1`, unmerged)
+
+Note: `/home/frost/corrections-h001.md` (holdout h001, main @ `c790417`).
+Verdict there is "test artifact, no fix required", but the failure mode is
+real — a 7-word-prefix question missed its gold chunk in a lexical top-4
+(hybrid top-4 had it at rank 1). Fix, not deflection: `answer_question`
+widens the lexical net (`top_k` → max 8) when the query has ≤6 distinct
+content tokens (`SHORT_QUERY_TOKENS/SHORT_QUERY_TOP_K` in
+`workflows/answer.py`; effective value + boost reason in trace). This only
+proposes more candidates — gates + verifier still decide, so it cannot
+fabricate. Chose this over defaulting everything to hybrid (heavier,
+systemic) per the note's own options. Refusals re-measured: **12/30,
+identical set**, verifier-caused none. Suite: **90 passed**.
+
   Correction to the sweep's "fixes landed" note: `max_scan` does NOT count
   kept rows only — it is a scan budget over every streamed row *including*
   skipped ones (see `iter_hf_rows` docstring). Counting kept-only would
   unbind the 17M-row stream; short filtered ingests are the budget working,
   fixed by raising `max_scan`, not by code change.
+
+## B1/B2/B3 workflows (2026-10-09, on `core/phase-1`, unmerged)
+
+- `workflows/draft.py` (B1): per required field — user_input fills render
+  `[USER-PROVIDED: field=value]` (never claims) else MissingInfo;
+  otherwise scoped retrieval (`Registry.search` gained a backward-compatible
+  `doc_ids` filter) with `retrieval_query` or name+description fallback,
+  normal claims→verify, sourced only if ≥1 verifies (why_needed=description,
+  searched_in=scope). Names containing "provision"/"grounds" also search
+  statute+judgment docs; section numbers arrive only inside verified claim
+  text. precheck=True returns status text + claims + missing + sourced/required
+  confidence, never refused. Full draft assembles boilerplate fixed_text with
+  `claim [cN]` / `[MISSING: f]` / `[USER-PROVIDED: …]` fills + Sources block
+  (globally renumbered c1..N); refuses only when nothing sourced and no fills.
+- `workflows/review.py` (B2): per-doc claims→verify over the doc's own chunks
+  (verifier still guards every claim), keyword MissingInfo for FIR / charge
+  sheet / remand order / medical report, deterministic regex contradictions
+  (FIR-with-digits, attributed dates, Rs.-amounts, named ages, sections) —
+  cross-doc pairs only, first-pair-per-(attr,docs), real chunk_ids.
+  P2 planted-conflict files are not in this tree, so tests plant inline.
+- `workflows/research.py` (B3): case claims (doc_ids scope) + statute/judgment
+  claims, citations resolved-only by construction; IPC/CrPC/Evidence mentions
+  (±80-char Act window; bare "Section N" skipped) looked up in
+  `corpus/section_map.json` — the real file carries repeal rows only, so the
+  honest default is MissingInfo ("no verified old-to-new mapping available");
+  shown rows must carry source_url (sourceless rows → MissingInfo).
+- Wiring: `flags.run()` dispatches draft/review/research (draft/review
+  default the question; research requires it); `AskIn` gained optional
+  `draft_type/instructions/provided_values/precheck`. Template/map loaders
+  read `$TEMPLATES_DIR`/`$SECTION_MAP_PATH` → core paths → main-tree copies
+  (read-only; tests use fixtures, suite stays hermetic).
+- Suite: **121 passed** (106 + 15 new), schemas untouched.
+
+## Hybrid truth-check (2026-10-09, bge-m3 + reranker on 1485-chunk corpus)
+
+Recall@4 on `eval/datasets/queries_resolved.jsonl` (reported, never tuned;
+first run's ~0s were a script bug — wrong gold file — retracted above):
+
+- Non-holdout (n=25): lexical chunk 12/25 (0.48), doc 20/25 (0.80) |
+  hybrid-default chunk **20/25 (0.80)**, doc **24/25 (0.96)** |
+  hybrid-nogate chunk 21/25 (0.84), doc 24/25 (coverage gate costs 1 hit).
+- Holdout (n=5, for completeness): lexical 4/5 chunk, 5/5 doc; hybrid 5/5 both.
+- BM25+rerank-only (pre-dense-fix) was chunk 16/25: the dense leg adds +4.
+- Traps (n=10): mean retrieved lex 3.1, hyb 4.0 — dense leg is token-ungated
+  by design, so it proposes more; refusal stays downstream (verifier+gates).
+- Load-bearing bug found by the new warning: `_ensure_dense` called
+  `col.get(ids=[c.chunk_id])` with `c` unbound (`NameError`), so the dense
+  leg had NEVER engaged — all prior "hybrid" numbers were BM25-only. Fixed
+  + regression-tested. Venue: models fine, VRAM is the constraint — set
+  `EMBED_DEVICE=cpu` on a busy GPU (embeddings cache in `data/chroma/`).
 
 ## Flags for other areas (not mine to fix)
 
