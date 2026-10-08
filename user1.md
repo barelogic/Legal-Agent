@@ -84,6 +84,33 @@ False refusals on `eval/queries.jsonl` answerable (seeds-only registry):
 **12/30 = 40.0%, byte-identical to pre-change baseline** (all 12 are
 empty-retrieval gaps; verifier-caused: none). Suite: **78 passed**.
 
+## Corrections batch 2 (2026-10-08, on `core/phase-1`, unmerged)
+
+Report: `/home/frost/correctionsfile.md` (full-repo sweep, main @ `d82e17f`).
+Decisions taken with user: verified-only `claims` on success (failed stay
+in `trace.dropped_reasons`); minimal fill (`missing_info` on refusal with
+`searched_in`, `confidence`=verified/total, `contradictions` stays `[]` —
+trace-dict/optional fields only, `contracts/schemas.py` untouched).
+
+- Refusal tristate (`no retrieved…` / `model returned no claims` / `all
+  claims failed verification`); `claims=verified` on success.
+- API: `top_k` 1..50 else 422 (incl. explicit `0`); missing key → 503;
+  hybrid failure falls through to lexical with the cause in
+  `trace.fallbacks`; both ingest routes surface `index_note` on rebuild
+  failure; `backend` recorded in trace. Shared `SUFFIXES` import.
+- `claims.py` binds `_chunks` on a per-call copy (race-safe); OpenAI
+  malformed payload wrapped as `RuntimeError` like Gemini.
+- `hf_cases`: bad year → `None` (no 500); empty CNR+meta → indexed
+  `fallback` (no `doc` collisions); `max_scan` documented as scan budget.
+- Hybrid label bonus counted once (TF leg `+3` XOR fused `+0.05`);
+  `--min-overlap` CLI passthrough; statute headings kept in chunk bodies.
+- Dead code: removed zero-caller `get_gemini_key`. KEPT `Registry.get_chunk`
+  /`chunk_map` (user3 fixture test calls `fx.get_chunk`) and
+  `gate_citations` (their tests import it) — removal would break their tree.
+  Dense leg stays ungated by design (flagged before).
+- False refusals: **12/30, identical set to baseline**, verifier-caused none.
+  Suite: **89 passed** (78 + 11 new).
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).

@@ -65,6 +65,7 @@ class HybridIndex:
         self.persist_dir = Path(persist_dir) if persist_dir else get_chroma_dir()
         self.embed_model = embed_model or get_embed_model()
         self._bm25 = self._build_bm25()
+        self._tf_fallback_used = self._bm25 is None
         self._dense_ok = False
         self._collection = None
         self._reranker = None
@@ -218,6 +219,7 @@ class HybridIndex:
         ]
         if not pool_idx or not _tokens(query):
             return []
+        self._tf_fallback_used = self._bm25 is None
         pool_ids = {self.chunks[i].chunk_id for i in pool_idx}
         pool_docs = {self.chunks[i].doc_id for i in pool_idx}
         bm25_rank = self._bm25_rank(query, pool_idx, min_overlap=min_overlap)
@@ -226,8 +228,10 @@ class HybridIndex:
             if cid in pool_ids
         ]
         fused = rrf([r for r in (bm25_rank, dense_rank) if r])
-        # section-label bonus mirrors retrieval/store.py behaviour
-        fused = self._label_bonus(query, fused)
+        # Section-label bonus, counted ONCE: the TF fallback leg already
+        # adds +3 (mirroring store.py), so skip the fused +0.05 there.
+        if not self._tf_fallback_used:
+            fused = self._label_bonus(query, fused)
         final = self._rerank(query, fused[: max(top_k * 3, top_k)])
         return [(self.by_id[cid], score) for cid, score in final[:top_k]]
 

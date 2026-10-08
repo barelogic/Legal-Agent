@@ -13,7 +13,7 @@ retry would deterministically repeat itself.
 import time
 from typing import Literal
 
-from contracts.schemas import Answer, Chunk, Claim
+from contracts.schemas import Answer, Chunk, Claim, MissingInfo
 from generation.claims import generate_claims
 from retrieval.store import Registry
 from verify import flags as vflags
@@ -103,24 +103,40 @@ def answer_from_chunks(
         "latency_ms": ms,
     }
     if not verified:
-        all_claims = failed  # keep audit trail with unsupported statuses
+        # Refusal tristate: distinguish "nothing retrieved" from "model
+        # silent" from "everything failed" (they need different fixes).
+        if not retrieved:
+            reason = "no retrieved chunk supported a verifiable claim"
+        elif not candidates:
+            reason = "model returned no claims"
+        else:
+            reason = "all claims failed verification"
         return Answer(
             workflow=workflow,
             text=REFUSAL,
-            claims=all_claims,
+            claims=failed,  # audit trail with unsupported statuses
             citations=[],
+            missing_info=[
+                MissingInfo(
+                    field="supporting evidence",
+                    why_needed=reason,
+                    searched_in=sorted({c.doc_id for c in retrieved}),
+                )
+            ],
+            contradictions=[],  # no contradiction detector yet; never invent
+            confidence=(0.0 if candidates else None),
             refused=True,
-            refusal_reason=(
-                "no retrieved chunk supported a verifiable claim"
-                if not retrieved else "all claims failed verification"
-            ),
+            refusal_reason=reason,
             trace=trace,
         )
     return Answer(
         workflow=workflow,
         text=render_text(verified),
-        claims=verified + failed,
+        claims=verified,  # failed stay in trace.dropped_reasons, not the payload
         citations=citations,
+        missing_info=[],
+        contradictions=[],
+        confidence=(len(verified) / len(candidates) if candidates else None),
         refused=False,
         trace=trace,
     )

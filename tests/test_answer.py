@@ -41,12 +41,52 @@ def test_fabricated_claim_dropped():
     assert v == [] and len(f) == 1
 
 
-def test_trace_records_dropped_reasons():
+def test_refusal_tristate():
+    from retrieval.store import Registry
+    from contracts.schemas import Chunk, Doc
+    from workflows.answer import answer_from_chunks
+
+    doc = Doc(doc_id="d", title="D", doc_type="statute")
+    chunk = Chunk(chunk_id="d::p1::c0", doc_id="d", text="Bail is the rule.")
+    reg = Registry()
+    reg.register_doc(doc)
+    reg.chunks[chunk.chunk_id] = chunk
+
+    class _Silent:
+        def complete_claims(self, prompt: str) -> str:
+            return "[]"
+
+    # (a) nothing retrieved
+    a = answer_from_chunks("q?", "chat", reg, _Silent(), [])
+    assert a.refused and a.refusal_reason == "no retrieved chunk supported a verifiable claim"
+    # (b) evidence present but model silent
+    a = answer_from_chunks("q?", "chat", reg, _Silent(), [chunk])
+    assert a.refused and a.refusal_reason == "model returned no claims"
+    # (c) claims all fail
+    class _Bad:
+        def complete_claims(self, prompt: str) -> str:
+            return '[{"text": "The moon grants bail.", "chunk_ids": ["d::p1::c0"], "quote": "invented"}]'
+
+    a = answer_from_chunks("q?", "chat", reg, _Bad(), [chunk])
+    assert a.refused and a.refusal_reason == "all claims failed verification"
+    assert a.trace["dropped_reasons"]  # audit trail preserved in trace
+
+
+def test_missing_info_confidence_and_verified_only():
+    from generation.llm import MockClient
+
     reg = _reg()
     ans = answer_question("When is bail granted in non-bailable offences?", "chat", reg, MockClient(), top_k=4)
-    assert "dropped_reasons" in ans.trace
-    assert ans.trace["dropped"] == len(ans.trace["dropped_reasons"])
-    assert "fallbacks" in ans.trace and "verify_flags" in ans.trace
+    assert not ans.refused
+    assert all(c.status == "verified" for c in ans.claims)  # failed stay in trace only
+    assert ans.trace["dropped_reasons"] == []  # clean answer drops nothing
+    assert ans.trace["dropped"] == 0
+    assert ans.confidence == 1.0
+    assert ans.contradictions == [] and ans.missing_info == []
+
+    bad = answer_question("xyzzy quantum torts on Mars", "research", reg, MockClient(), top_k=4)
+    assert bad.refused and bad.confidence is None
+    assert bad.missing_info and bad.missing_info[0].searched_in is not None
 
 
 def test_regenerate_keeps_better_result():

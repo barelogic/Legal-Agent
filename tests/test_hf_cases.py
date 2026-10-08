@@ -61,3 +61,16 @@ def test_ingest_rows_bulk_save(tmp_path):
     assert len(load_docs(base=tmp_path)) == 3
     assert len(load_chunks(base=tmp_path)) == len(chunks)
     assert isinstance(h.HF_DATASET, str) and isinstance(docs[0], Doc)
+
+
+def test_bad_year_is_none_not_500():
+    doc, _ = row_to_doc(_row(decision_year="unknown", citation_year=""))
+    assert doc.year is None
+    doc, _ = row_to_doc(_row(decision_year="2021"))
+    assert doc.year == 2021
+
+
+def test_empty_ids_do_not_collide():
+    a, _ = row_to_doc(_row(cnr_number="", case_metadata_id=""), fallback="hf_row_3")
+    b, _ = row_to_doc(_row(cnr_number="", case_metadata_id=""), fallback="hf_row_7")
+    assert a.doc_id and b.doc_id and a.doc_id != b.doc_id

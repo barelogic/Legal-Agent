@@ -17,3 +17,12 @@ def test_basic_chunk():
 
 def test_empty():
     assert chunk_text(_doc(), "   ") == []
+
+
+def test_section_heading_kept_in_body():
+    from ingest.chunker import split_statute
+
+    parts = split_statute("Preamble words.\nSection 483 Bail text here.\nSection 484 Other text.")
+    assert parts[1][0] == "Section 483"
+    assert "Section 483" in parts[1][1]
+    assert "Section 484" in parts[2][1]

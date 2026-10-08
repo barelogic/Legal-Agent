@@ -64,7 +64,11 @@ def chunk_text(
 
 
 def split_statute(text: str) -> list[tuple[str | None, str]]:
-    """Split statute text into (section_label, body) on 'Section N' headings."""
+    """Split statute text into (section_label, body) on 'Section N' headings.
+
+    The heading line stays in the body (quotes/verifier match on it) while
+    section_label carries the structured tag.
+    """
     out: list[tuple[str | None, str]] = []
     pos = 0
     current: str | None = None
@@ -72,7 +76,7 @@ def split_statute(text: str) -> list[tuple[str | None, str]]:
         if m.start() > pos:
             out.append((current, text[pos : m.start()].strip()))
         current = f"Section {m.group(1)}"
-        pos = m.end()
+        pos = m.start()  # keep "Section N" heading tokens in the body
     out.append((current, text[pos:].strip()))
     return [(label, body) for label, body in out if body]
 
