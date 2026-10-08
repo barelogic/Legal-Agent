@@ -48,8 +48,13 @@ class Registry:
     def chunk_map(self, chunk_ids: list[str]) -> dict[str, Chunk]:
         return {cid: self.chunks[cid] for cid in chunk_ids if cid in self.chunks}
 
-    def search(self, query: str, top_k: int = 4) -> list[Chunk]:
-        """Rank chunks by content-token overlap. Stopword-only overlap -> []."""
+    def search(self, query: str, top_k: int = 4, min_overlap: int = 2) -> list[Chunk]:
+        """Rank chunks by content-token overlap. Stopword-only overlap -> [].
+
+        min_overlap (distinct query content-tokens, default 2) is the refusal
+        lever: single-token overlap (e.g. near-gibberish sharing one legal
+        term) retrieves nothing instead of grounding an answer on noise.
+        """
         qtok = _content_tokens(query)
         if not qtok:
             return []
@@ -57,7 +62,12 @@ class Registry:
         scored: list[tuple[int, str]] = []
         for cid, ch in self.chunks.items():
             ccount = Counter(_content_tokens(ch.text))
-            score = sum(min(qcount[t], ccount[t]) for t in qcount if t in ccount)
+            overlap = {t for t in qcount if t in ccount}
+            if len(overlap) < min_overlap and not (
+                ch.section_label and ch.section_label.lower() in query.lower()
+            ):
+                continue
+            score = sum(min(qcount[t], ccount[t]) for t in overlap)
             # small bonus for section-label match (e.g. "Section 483")
             if ch.section_label and ch.section_label.lower() in query.lower():
                 score += 3

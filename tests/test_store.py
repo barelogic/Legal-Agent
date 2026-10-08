@@ -16,3 +16,20 @@ def test_search_finds_bail():
 
 def test_empty_query():
     assert Registry().search("", top_k=2) == []
+
+
+def _one_token_reg() -> Registry:
+    reg = Registry()
+    doc = Doc(doc_id="d1", title="T", doc_type="statute")
+    reg.register_doc(doc)
+    reg.add_chunks(chunk_text(doc, "quantum of punishment is decided by the Court"))
+    return reg
+
+
+def test_single_token_overlap_refused_by_default():
+    # near-gibberish sharing one legal term must not retrieve (refusal lever)
+    assert _one_token_reg().search("xyzzy quantum frobnication") == []
+
+
+def test_single_token_overlap_allowed_when_relaxed():
+    assert _one_token_reg().search("xyzzy quantum frobnication", min_overlap=1) != []
