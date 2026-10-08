@@ -35,11 +35,23 @@ Updated: 2026-10-08, at merge `c2bb941` (main's hybrid gate merged in).
 - `contracts/schemas.py`: untouched.
 - `eval/build_queries.py`: 40/40 resolve against `data/processed/`.
 
-## Pending on me (not blocking)
+## Gate-era numbers (measured just now, `run_all.py --hf-limit 0 --top-k 4`)
 
-- Regenerate `eval/results/` tables under the new gates and report
-  before/after deltas (expect trap refusal_R up from 0.0). Pre-gate numbers
-  in earlier messages are stale — do not quote them.
+Tunable split (n=30, 25 answerable); full table in `eval/results/tables.md`:
+
+| system | hit_rate | recall@k | refusal_R | fabrication |
+|---|---|---|---|---|
+| full_lexical_verified | 0.520 | 0.380 | 0.000 | 0.000 |
+| hybrid_verified | 0.600 | 0.500 | 0.000 | 0.000 |
+| baseline_injected | 0.520 | 0.380 | 0.000 | 1.000 |
+
+Delta vs pre-gate: **zero everywhere**. Verified cause is trap design, not
+the gate: all 5 tunable traps share 3–4 content tokens with some chunk
+(measured max-overlap: 4,4,4,3,4), so `min_overlap=2` correctly does not
+fire. The gate does exactly what its unit tests prove (blocks single-token
+overlap); multi-token-but-irrelevant traps need a relevance signal or a
+live LLM emitting `[]`, both beyond a token-count gate by design.
+No core change indicated.
 - Scores use deterministic MockClient + fallback judge unless
   `GEMINI_API_KEY` is set (mode is logged in every result).
 
