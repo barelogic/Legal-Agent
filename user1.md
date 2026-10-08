@@ -255,6 +255,20 @@ first run's ~0s were a script bug — wrong gold file — retracted above):
   + regression-tested. Venue: models fine, VRAM is the constraint — set
   `EMBED_DEVICE=cpu` on a busy GPU (embeddings cache in `data/chroma/`).
 
+## Validation run on an unseen doc (2026-10-09, branch HEAD, unmerged)
+
+Frozen-target rehearsal: fresh synthetic case file (`FIR 0789/2026`, unseen
+vocab) ingested live via `/ingest`, then all workflows over HTTP (mock LLM,
+seeds + 1 new doc). **17/17 checks**: ingest, chat answers with FIR cited +
+quotes resolving verbatim via `/sources`, probe refuses, review finds all
+four expected elements with zero contradictions, precheck + full draft on
+the real `bail_application.json` (user fill marked, accused sourced,
+nothing invented), research with no guessed mappings + resolved citations.
+The run caught one real recall bug: draft field retrieval used
+`min_overlap=2`, so "FIR No. 0789/2026" (no word "number") went MISSING —
+fixed to `min_overlap=1` for system-generated field queries (propose-only;
+verifier still decides) + regression test. Suite: **179 passed**.
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).
