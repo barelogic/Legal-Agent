@@ -1,8 +1,10 @@
 """Review workflow: verified key facts + deterministic contradictions.
 
-P2's planted-conflict case files do not exist in this tree, so the
-conflicts are planted inline here (same shapes: shared FIR, conflicting
-arrest date, one doc missing its medical report).
+P2's planted-conflict case files live in the eval tree
+(`eval/workflow_metrics.py::planted_docs`, branch `eval/data-eval`); the
+shapes below are byte-identical copies (same doc/chunk IDs and texts) so
+this suite stays hermetic and never reaches into another user's worktree.
+test_review_p2_planted_pair runs the full pipeline on P2's pair.
 """
 
 from contracts.schemas import Chunk, Doc
@@ -63,8 +65,7 @@ def test_unknown_doc_yields_missing():
     assert any(m.field == "ghost" for m in ans.missing_info)
 
 
-def test_extractors_conservative():
-    # Bare "FIR registered" with no digits is not an FIR number.
+def test_extractors_conservative():    # Bare "FIR registered" with no digits is not an FIR number.
     assert not [p for p in extract_attribute_values("FIR was registered yesterday") if p[0] == "FIR number"]
     # A section without an Act stays in its own conservative bucket.
     attrs = extract_attribute_values("Section 483 applies here.")
@@ -76,3 +77,38 @@ def test_extractors_conservative():
         Claim(claim_id="c2", text="FIR number 0451/2024 was registered.", chunk_ids=["caseB::p1::c0"], quote="q"),
     ]
     assert find_contradictions(cs) == []
+
+
+# P2's planted pair, byte-identical (eval/workflow_metrics.py::planted_docs).
+P2_A = ("plant_amt_date_a",
+        "FIR No. 0451/2024 records that Vikas Sharma stood surety bond "
+        "of Rs. 50,000 and that date of arrest 15/03/2024 is on record.")
+P2_B = ("plant_amt_date_b",
+        "Supplementary note on FIR No. 0451/2024 records that Vikas Sharma "
+        "stood surety bond of Rs. 75,000 and that date of arrest "
+        "18/03/2024 is on record.")
+
+
+def _p2_reg() -> Registry:
+    reg = Registry()
+    for doc_id, text in (P2_A, P2_B):
+        reg.register_doc(Doc(doc_id=doc_id, title=doc_id, doc_type="case_file"))
+        cid = f"{doc_id}::p1::c1"
+        reg.chunks[cid] = Chunk(chunk_id=cid, doc_id=doc_id, text=text)
+    return reg
+
+
+def test_review_p2_planted_pair():
+    """Full pipeline on P2's planted files: amount + arrest-date conflicts."""
+    reg = _p2_reg()
+    ans = run_review(doc_ids=["plant_amt_date_a", "plant_amt_date_b"],
+                     registry=reg, llm=MockClient())
+    assert not ans.refused
+    assert all(c.status == "verified" for c in ans.claims)
+    attrs = {c.description.split(":")[0] for c in ans.contradictions}
+    assert attrs == {"surety amount", "date of arrest"}
+    for c in ans.contradictions:
+        assert c.claim_a in reg.chunks and c.claim_b in reg.chunks
+        assert c.claim_a.split("::")[0] != c.claim_b.split("::")[0]
+    # Shared FIR number must NOT contradict.
+    assert not [c for c in ans.contradictions if c.description.startswith("FIR")]

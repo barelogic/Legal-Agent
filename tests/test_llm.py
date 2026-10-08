@@ -115,3 +115,15 @@ def test_trace_records_llm_policy(monkeypatch):
     ans = answer_question("What sum stands as surety?", "chat", reg, MockClient())
     assert ans.trace["llm"]["provider"] == "mock"
     assert ans.trace["llm"]["temperature"] == "mock (deterministic)"
+
+
+def test_mock_first_sentence_skips_abbreviations():
+    import json as _json
+
+    from contracts.schemas import Chunk
+    from generation.llm import MockClient
+
+    ch = Chunk(chunk_id="d::p1::c0", doc_id="d",
+               text="FIR No. 0451/2024 records that Rs. 50,000 stood deposited. Next event.")
+    out = _json.loads(MockClient(chunks=[ch]).complete_claims("q"))
+    assert out[0]["text"] == "FIR No. 0451/2024 records that Rs. 50,000 stood deposited"
