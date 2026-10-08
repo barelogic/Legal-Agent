@@ -184,6 +184,24 @@ identical set**, verifier-caused none. Suite: **90 passed**.
   (read-only; tests use fixtures, suite stays hermetic).
 - Suite: **121 passed** (106 + 15 new), schemas untouched.
 
+## Hybrid truth-check (2026-10-09, bge-m3 + reranker on 1485-chunk corpus)
+
+Recall@4 on `eval/datasets/queries_resolved.jsonl` (reported, never tuned;
+first run's ~0s were a script bug — wrong gold file — retracted above):
+
+- Non-holdout (n=25): lexical chunk 12/25 (0.48), doc 20/25 (0.80) |
+  hybrid-default chunk **20/25 (0.80)**, doc **24/25 (0.96)** |
+  hybrid-nogate chunk 21/25 (0.84), doc 24/25 (coverage gate costs 1 hit).
+- Holdout (n=5, for completeness): lexical 4/5 chunk, 5/5 doc; hybrid 5/5 both.
+- BM25+rerank-only (pre-dense-fix) was chunk 16/25: the dense leg adds +4.
+- Traps (n=10): mean retrieved lex 3.1, hyb 4.0 — dense leg is token-ungated
+  by design, so it proposes more; refusal stays downstream (verifier+gates).
+- Load-bearing bug found by the new warning: `_ensure_dense` called
+  `col.get(ids=[c.chunk_id])` with `c` unbound (`NameError`), so the dense
+  leg had NEVER engaged — all prior "hybrid" numbers were BM25-only. Fixed
+  + regression-tested. Venue: models fine, VRAM is the constraint — set
+  `EMBED_DEVICE=cpu` on a busy GPU (embeddings cache in `data/chroma/`).
+
 ## Flags for other areas (not mine to fix)
 
 - user2: trap `refusal_R` delta is yours (`eval/results/` regen under gates).

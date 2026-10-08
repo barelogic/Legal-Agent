@@ -6,11 +6,14 @@ to lexical scoring so the pipeline keeps working end-to-end. Embeddings
 persist in CHROMA_DIR, so they are computed once and cached on disk.
 """
 
+import logging
 import os
 import re
 from pathlib import Path
 
 from contracts.schemas import Chunk
+
+logger = logging.getLogger(__name__)
 
 _TOKEN = re.compile(r"[a-z0-9]+")
 _STOP = frozenset(
@@ -39,6 +42,16 @@ def get_retrieval_backend() -> str:
 
 def get_embed_model() -> str:
     return os.getenv("EMBED_MODEL", "BAAI/bge-m3").strip() or "BAAI/bge-m3"
+
+
+def get_embed_device() -> str | None:
+    """Torch device for the embedding model (EMBED_DEVICE, e.g. "cpu").
+
+    None (unset/empty) means sentence-transformers auto-pick, which prefers
+    CUDA and OOMs on small/shared GPUs — the dense leg then degrades to
+    lexical. Set EMBED_DEVICE=cpu at venues with a busy GPU.
+    """
+    return os.getenv("EMBED_DEVICE", "").strip() or None
 
 
 def get_reranker_model() -> str:
@@ -178,10 +191,12 @@ class HybridIndex:
         except ImportError:
             return False
         try:
-            model = SentenceTransformer(self.embed_model)
+            device = get_embed_device()
+            model = SentenceTransformer(
+                self.embed_model, device=device) if device else SentenceTransformer(self.embed_model)
             client = chromadb.PersistentClient(path=str(self.persist_dir))
             col = client.get_or_create_collection("chunks")
-            have = set(col.get(ids=[c.chunk_id])["ids"])
+            have = set(col.get(ids=[c.chunk_id for c in self.chunks])["ids"])
             missing = [c for c in self.chunks if c.chunk_id not in have]
             if missing:
                 embs = model.encode(
@@ -198,7 +213,11 @@ class HybridIndex:
             self._embed = model.encode  # type: ignore[attr-defined]
             self._collection = col
             self._dense_ok = True
-        except Exception:
+        except Exception as e:
+            # Degrade loudly, not silently: callers (and venue operators)
+            # must know the "hybrid" numbers are BM25-only. Typical cause:
+            # CUDA OOM on a shared GPU — retry with EMBED_DEVICE=cpu.
+            logger.warning("dense leg disabled (%s); continuing BM25-only", e)
             self._dense_ok = False
         return self._dense_ok
 
