@@ -3,7 +3,31 @@
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
 Updated: 2026-10-08, plain-RAG baseline landed (live-capable, fallback numbers reported; live key blocked).
 
-## P1 — first real baseline numbers (dev/tunable split, n=30, 25 answerable)
+## P1 — LIVE numbers, local Ollama `llama3.1:8b` (dev/tunable split, n=30, 25 answerable)
+
+`eval/run_all.py --hf-limit 0 --top-k 4`, all generation live
+(`openai_compatible:llama3.1:8b`, `http://localhost:11434/v1`);
+judge still `deterministic-fallback` (no second local model; Gemini judge
+404s on our key). Full table in `eval/results/tables.md`.
+
+| system | hit_rate | recall@k | mrr | grounded* | fab_count | trap_ref_R | use/5 | lat_ms |
+|---|---|---|---|---|---|---|---|---|
+| full_lexical_verified | 0.520 | 0.380 | 0.423 | 0.640 | 0 | 0.400 | 2.667 | 7269 |
+| baseline_no_verify | 0.520 | 0.380 | 0.423 | 0.840 | 6 | 0.400 | 3.433 | 3735 |
+| hybrid_verified | 0.600 | 0.500 | 0.540 | 0.720 | 0 | 0.800 | 3.400 | 2870 |
+| baseline_injected (synthetic) | 0.520 | 0.380 | 0.423 | 1.000 | 30 | 0.000 | 3.300 | 3695 |
+| baseline_plain_rag | 0.640 | 0.550 | 0.548 | 0.745 | 17 | 0.000 | 3.667 | 2422 |
+
+\*verified_rate for claim pipelines; mean atomic-claim support for plain RAG.
+The deltas MockClient hid are now visible: the verifier takes pipeline fab
+6→0 (`baseline_no_verify` vs `full`); plain RAG has the best retrieval AND
+the highest usefulness (3.667) AND the worst real fabrication (17/30, 0.000
+trap refusal) — usefulness without grounding rewards fluent hallucination.
+Hybrid leads trap refusal (0.800). Seed gold split (n=6): pipeline traps
+1.000 refusal, plain RAG 0.333 with fab 3/6.
+Mock-era tables are superseded; `plain_rag_llm_mode: openai_compatible-live`
+is logged in `metrics.json`. Test suite stays mock-pinned (`LLM_PROVIDER=mock`
+override) and green.
 
 `eval/results/tables.md` now has all five systems. Reported columns:
 groundedness, fabrication count, recall@k, MRR, trap refusal_R,
