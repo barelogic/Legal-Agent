@@ -41,13 +41,13 @@ def test_manifest_every_doc_has_provenance():
 def test_queries_format():
     rows = [json.loads(x) for x in
             (ROOT / "eval" / "queries.jsonl").read_text(encoding="utf-8").splitlines() if x.strip()]
-    assert len(rows) == 40
+    assert len(rows) == 50
     by_wf: dict[str, int] = {}
     for r in rows:
         by_wf[r["workflow"]] = by_wf.get(r["workflow"], 0) + 1
         assert set(r) >= {"qid", "workflow", "question", "answer_span",
                           "answerable", "trap", "holdout"}
         assert (r["answer_span"] == "") == (not r["answerable"])
-    assert by_wf == {"chat": 10, "review": 10, "research": 10, "draft": 10}
-    assert sum(1 for r in rows if r["trap"]) == 10
-    assert sum(1 for r in rows if r["holdout"]) == 10
+    assert by_wf == {"chat": 13, "review": 12, "research": 13, "draft": 12}
+    assert sum(1 for r in rows if r["trap"]) == 20
+    assert sum(1 for r in rows if r["holdout"]) == 14
