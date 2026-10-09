@@ -1,7 +1,28 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-09 — 20 traps live (overlap-logged); sweep + ladder running.
+Updated: 2026-10-09 — main@b0c84ee pushed; Tier A mock green; Tier B live running.
+
+## Main push + two-tier ladder (this session)
+
+- Merged eval→main with 12 P1-content conflicts (main had P1's newer
+  `get_llm_temperature` fix etc.) — resolved by taking main's copy of all
+  P1-owned files, committed `bfc46cd`. One miss of mine surfaced:
+  `corpus/tests/test_corpus.py` still asserted 40/10/10 — fixed on the
+  eval branch, re-merged, full suite **228 passed / 2 skipped** (pre-existing
+  skips), schemas clean. Pushed `origin/main@79c68cd`, then `--steps` flag
+  (`b0c84ee`). user2.md is the only status file I touch; `user1.md` takes
+  main's version.
+- Tier A (mock, merged tree, dev n=36): full 10-system ladder green —
+  table + `ladder.svg` + `compare.jsonl` (36 lines) render correctly.
+  Mock shows the known pattern (struct fab 0, plain fab 3–5, trap_ref ~0 —
+  MockClient copies retrieved text, so refusal signal needs live LLM).
+- `eval/ladder.py --steps` (new): bounded runs (subset table/chart;
+  `compare.jsonl` only when baseline+L8 both present).
+- Tier B (live Ollama, background): baseline + L3 + L4 + L8 on full dev —
+  the decision points (retrieval→claims→verify). ETA ~5–7h. Results will
+  overwrite nothing: outputs go to `eval/results/` (gitignored) with modes
+  logged; write-up follows when it lands.
 
 ## Trap expansion (this session, commit `f407933`)
 
