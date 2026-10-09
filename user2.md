@@ -1,7 +1,90 @@
 # user2 status — eval + data (readable by all agents)
 
 Owner: user2 · Branch: `eval/data-eval` · Worktree: `/home/frost/legal-agent-eval`
-Updated: 2026-10-09 — court ingestion landed (6,196 docs); suite re-running on big corpus.
+Updated: 2026-10-09 — 20 traps live (overlap-logged); sweep + ladder running.
+
+## Trap expansion (this session, commit `f407933`)
+
+- `eval/trap_overlap.py` (new): per-trap max token overlap vs the corpus
+  with retrieval tokenization. Old 10 traps re-scored on the 81k-chunk
+  vocab: coverage 0.50–0.88, ALL above `MIN_COVERAGE` 0.32 (big corpus made
+  them more near-vocab — the required recompute).
+- 10 new near-vocab traps q041–q050 (4 holdout: q042/q044/q047/q050):
+  3 fake cases (Pawan Kumar Gupta 2021 default bail; Subramani SC-2023
+  witness protection; Chandan Kumar 2022 compensation), 3 absent-Act
+  sections (BNS s.500 / BNSS s.600 / BSA s.300 — past real section counts
+  358/531/170), 2 absent facts from FIR 0451/2024 (bank names; surety
+  furnishing date), 2 real-name-wrong-year/court (2019+2024INSC735;
+  Bombay+Rasid Ansari). Absence verified per trap (0 supporting chunks);
+  new-trap coverage 0.43–0.71. Resolved 50/50 (30 answerable).
+  `build_queries.py` asserts bumped (50 rows / 20 traps / 14 holdout;
+  workflows 13/12/13/12). `eval/tests/test_traps.py` (mock, instant).
+- `eval/sweep_gates.py` (new): MIN_COVERAGE {0–0.5} × rerank {bypass,
+  cutoff} on DEV only (holdout never touched) — answerable recall@k vs
+  trap empty-retrieval rate; knee by best trap-empty within 0.02 of max
+  recall. Recommends only; P1 defaults unchanged.
+- Sweep result (dev n=36, `results/sweep.json`): recall flat 0.43 for
+  coverage 0–0.32, falling at 0.4 (0.37) / 0.5 (0.29); trap-empty 0.000
+  everywhere except 0.5 (0.091 = 1/11); rerank bypass ≡ cutoff on ALL
+  configs (cutoff 0.0 drops nothing). Knee = current defaults
+  (0.32 + rerank-on). Honest read: retrieval gates barely separate
+  near-vocab traps — refusal has to come from the verifier/live-LLM
+  stages, which is what the ladder measures end-to-end. (Footnote: the
+  CrossEncoder OOM'd on GPU and ran on CPU.)
+- Corrections `user2` items: trap recompute + expansion DONE; sweep
+  running; served-vs-committed closes after the corpus rebuild (queued
+  behind the ladder so `latency_ms` stays clean).
+
+## Fetch round 2 (this session — on disk, NOT yet built)
+
+- SC S3: added years 2020/2021/2022/2023/2025 (2024 was already in).
+  Full-bucket discovery: 1950–2026 ≈ 23GB total — deliberately NOT pulled;
+  recent-years slice ≈ 1.8GB. Per-year tar sizes logged from
+  `corpus/list_court_files.py --source sc` (e.g. 2008 864MB peak, 2026 45MB).
+- HC S3: added Sikkim 2020 (`court=11_24`, 31MB) + Calcutta circuit bench
+  Jalpaiguri 2020 (48MB). Most benches are GB-scale (Kerala 4.2GB, Madras
+  8.4GB) — discovery output in session log; small benches picked.
+- HF: `fetch_hf_legal.py --with-train` → +5,000 LSI-train rows
+  (9,861 rows total in `data/raw/hf_legal/`). Indian-Law QA still excluded
+  (derived, opt-in only).
+- Ingestion source → status: (1) SC S3 yes/6 years; (2) HC S3 3 benches;
+  (3) Benchmark-Testing dev/test/statutes/bail caps + train cap;
+  (4) sujant full; (5) Indian-Law QA no.
+- NOT built yet: `build_corpus.py` over ~5k new PDFs is CPU-heavy and would
+  pollute the running ladder's `latency_ms`. Build + trap-overlap recompute
+  + commit after the ladder lands. Fetch manifest in
+  `data/raw/_court_fetch_log.json` (tracked).
+
+## Ladder + E4 (this session, commit `52b1a79`)
+
+- P1's newest work lived only on local `core/phase-1` (unpushed): relevance
+  gates (`MIN_COVERAGE`/`RERANK_MIN_SCORE`), A3 `workflows.flags.run()`,
+  verifier hardening, B1/B2/B3 draft/review/research. A full merge would
+  have DELETED `eval/`+`corpus/` (that branch lacks them), so: selective
+  `git checkout core/phase-1 -- <P1-owned paths>` onto `eval/data-eval`,
+  committed as `52b1a79` (P1 files verbatim; only eval-side addition is
+  trace-based plain detection in `eval/metrics_grounded.py`). Schemas clean.
+- New harness (all `eval/`, mock-pinned tests green): `eval/ladder.py`
+  (L0→L8 cumulative on dev n=30, top_k=4 fixed, shipped top-5 baseline as
+  reference; writes `results/ladder.{json,md,svg}` + `results/compare.jsonl`),
+  `eval/workflow_metrics.py` (E4: draft precision/missing-recall/fab,
+  review planted-P/R + natural, research cite-resolution).
+- Live run in background: Ollama `llama3.1:8b`, `LLM_JUDGE_MODEL=llama3.1:8b`
+  (entailment judge = same model, separate strict call — logged; eval
+  usefulness judge stays `deterministic-fallback` ≠ pipeline). Reranker
+  `BAAI/bge-reranker-base` cached locally, so the rerank step is real.
+  Per-query try/except → refused-with-error (one timeout already seen on
+  cold Ollama; won't kill the run). ETA ~1–2h.
+- I4 `compare.jsonl` schema (v1, per line): `{qid, question, answerable,
+  trap, ours: {system L8, text, refused, claims[], citations[], latency_ms},
+  baseline: {system, text, refused, atomic_claims[], supported[],
+  unsupported_claims[], unresolved_citations, groundedness},
+  delta: {ours_refused, baseline_refused, baseline_fab}}`.
+  P3: file at `eval/results/compare.jsonl` (gitignored runtime state —
+  read it from this worktree, same machine).
+- NOT pushed to main yet: merge + push after the live run lands and the
+  tables below are refreshed. E4 gold (hand-read from D1 files) lives in
+  `eval/workflow_metrics.py` (`GOLD`, `EXPECTED_MISSING`, planted pair).
 
 ## Corpus expansion (this session — S3 courts + HF legal sets)
 

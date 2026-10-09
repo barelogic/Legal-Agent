@@ -38,3 +38,13 @@
 {"qid": "q038", "workflow": "draft", "question": "Draft a bail order citing CrPC s.437.", "answer_span": "", "answerable": false, "trap": true, "holdout": true, "trap_note": "CrPC not in corpus; must refuse, not draft from memory"}
 {"qid": "q039", "workflow": "draft", "question": "What compensation was awarded to the complainant in FIR 0451/2024?", "answer_span": "", "answerable": false, "trap": true, "holdout": true, "trap_note": "no compensation in corpus"}
 {"qid": "q040", "workflow": "draft", "question": "What identifying detail proves the surety affidavit in the corpus is synthetic?", "answer_span": "Aadhaar No. 9999-8888-7777", "answerable": true, "trap": false, "holdout": true}
+{"qid": "q041", "workflow": "chat", "question": "What did the Patna High Court hold in Pawan Kumar Gupta vs State of Bihar (2021) about default bail?", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q042", "workflow": "research", "question": "What does BNS s.500 say about default bail?", "answer_span": "", "answerable": false, "trap": true, "holdout": true}
+{"qid": "q043", "workflow": "chat", "question": "Quote the Supreme Court's 2023 ruling in Subramani vs Inspector of Police on witness protection.", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q044", "workflow": "review", "question": "Name the two banks holding the accounts in the FIR 0451/2024 money trail.", "answer_span": "", "answerable": false, "trap": true, "holdout": true}
+{"qid": "q045", "workflow": "research", "question": "What does BNSS s.600 prescribe for bail in economic offences?", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q046", "workflow": "chat", "question": "What compensation did the court award in Chandan Kumar vs State of Bihar (2022)?", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q047", "workflow": "research", "question": "Summarise the 2019 Supreme Court decision reported as 2024INSC735.", "answer_span": "", "answerable": false, "trap": true, "holdout": true}
+{"qid": "q048", "workflow": "review", "question": "On which date did Vikas Sharma furnish surety in FIR 0451/2024?", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q049", "workflow": "draft", "question": "Draft a bail bond invoking BSA s.300.", "answer_span": "", "answerable": false, "trap": true, "holdout": false}
+{"qid": "q050", "workflow": "draft", "question": "Draft a bail order for Rasid Ansari's 2020 appeal before the Bombay High Court.", "answer_span": "", "answerable": false, "trap": true, "holdout": true}

@@ -91,7 +91,11 @@ def groundedness_report(
                 lat_n += 1
             if i in trap_idx and ans.refused:
                 trap_refused += 1
-            if sys == "baseline_plain_rag":
+            # Plain free-text systems (no claims/verifier by design) are
+            # scored via eval-time atomic-claim eval. Detected by the
+            # precomputed trace eval so ladder steps (L0..L3) need no
+            # name registry here; the shipped id keeps working as before.
+            if (ans.trace or {}).get("plain_rag_eval") is not None or sys == "baseline_plain_rag":
                 ev = _plain_eval(ans, docs, chunks)
                 if row.get("answerable"):
                     n_answerable += 1
@@ -161,6 +165,6 @@ def groundedness_report(
             "trap_def": trap_def,
             "latency_ms_mean": (lat_sum / lat_n) if lat_n else None,
         }
-        if sys == "baseline_plain_rag":
+        if (ans.trace or {}).get("plain_rag_eval") is not None or sys == "baseline_plain_rag":
             out[sys]["groundedness"] = (ground_sum / ground_n) if ground_n else 1.0
     return out
