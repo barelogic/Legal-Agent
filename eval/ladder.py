@@ -249,7 +249,8 @@ def ladder_retrieval(rows: list[dict],
 
 
 def render_ladder_table(m: dict) -> str:
-    order = ["baseline_plain_rag"] + [s["id"] for s in STEPS]
+    order = [s for s in ["baseline_plain_rag"] + [x["id"] for x in STEPS]
+             if s in m["groundedness"]]
     L = ["# Ladder (dev split, live LLM, P1 flags)",
          f"pipeline: {m['pipeline_llm']} | judge: {m['judge_model']} "
          f"({m.get('judge_mode', '?')}) | top_k={m['top_k']} "
@@ -279,7 +280,7 @@ def render_ladder_table(m: dict) -> str:
 
 def render_ladder_svg(m: dict, path: Path) -> None:
     """Dependency-free SVG: groundedness, recall@k, trap_ref_R across steps."""
-    order = [s["id"] for s in STEPS]
+    order = [x["id"] for x in STEPS if x["id"] in m["groundedness"]]
     short = [s.split("_", 1)[0] for s in order]  # L0..L8
     series = {}
     for key, fn in (("groundedness",
@@ -384,6 +385,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--top-k", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0,
                     help="cap dev rows (smoke test); 0 = all")
+    ap.add_argument("--steps", default="",
+                    help="comma-separated subset (e.g. baseline_plain_rag,"
+                         "L3_relevance_gate,L4_structured_noverify,"
+                         "L8_citation_gate); default = all 10 systems")
     ap.add_argument("--out", default="eval/results")
     args = ap.parse_args(argv)
 
@@ -405,6 +410,11 @@ def main(argv: list[str] | None = None) -> int:
     rows = load_resolved(holdout=False)
     if args.limit:
         rows = rows[:args.limit]
+    want = [s.strip() for s in args.steps.split(",") if s.strip()]
+    steps = [s for s in STEPS if not want or s["id"] in want]
+    if want and set(want) - ({s["id"] for s in STEPS} | {"baseline_plain_rag"}):
+        print(f"unknown steps: {sorted(set(want) - {s['id'] for s in STEPS} - {'baseline_plain_rag'})}")
+        return 2
 
     reg = make_registry(docs, chunks)
     from retrieval.hybrid import HybridIndex
@@ -412,7 +422,7 @@ def main(argv: list[str] | None = None) -> int:
     hidx = HybridIndex(list(chunks.values()))
     llm = make_client()
 
-    order = ["baseline_plain_rag"] + [s["id"] for s in STEPS]
+    order = ["baseline_plain_rag"] + [s["id"] for s in steps]
     answers: dict[str, list[Answer]] = {}
 
     def _safe(fn, *a, **k) -> Answer:
@@ -432,11 +442,12 @@ def main(argv: list[str] | None = None) -> int:
                                  "latency_ms": None, "ladder_error": str(e)[:200]})
 
     t_all = time.time()
-    answers["baseline_plain_rag"] = [
-        _safe(run_system, "baseline_plain_rag", r["question"], docs, chunks,
-              top_k=5, workflow=r.get("workflow", "chat")) for r in rows]
-    print(f"baseline_plain_rag done ({time.time()-t_all:.0f}s)", flush=True)
-    for s in STEPS:
+    if not want or "baseline_plain_rag" in want:
+        answers["baseline_plain_rag"] = [
+            _safe(run_system, "baseline_plain_rag", r["question"], docs, chunks,
+                   top_k=5, workflow=r.get("workflow", "chat")) for r in rows]
+        print(f"baseline_plain_rag done ({time.time()-t_all:.0f}s)", flush=True)
+    for s in steps:
         t0 = time.time()
         col = []
         for r in rows:
@@ -479,11 +490,16 @@ def main(argv: list[str] | None = None) -> int:
     table = render_ladder_table(m)
     (out / "ladder.md").write_text(table + "\n", encoding="utf-8")
     render_ladder_svg(m, out / "ladder.svg")
-    n_cmp = write_compare_jsonl(
-        rows, answers["L8_citation_gate"],
-        answers["baseline_plain_rag"], docs, chunks, out / "compare.jsonl")
-    print(table)
-    print(f"\nwrote ladder.json/ladder.md/ladder.svg + compare.jsonl ({n_cmp} lines)")
+    if "baseline_plain_rag" in answers and "L8_citation_gate" in answers:
+        n_cmp = write_compare_jsonl(
+            rows, answers["L8_citation_gate"],
+            answers["baseline_plain_rag"], docs, chunks, out / "compare.jsonl")
+        print(table)
+        print(f"\nwrote ladder.json/ladder.md/ladder.svg + compare.jsonl ({n_cmp} lines)")
+    else:
+        print(table)
+        print("\nwrote ladder.json/ladder.md/ladder.svg (compare.jsonl skipped: "
+              "needs baseline_plain_rag + L8_citation_gate)")
     return 0
 
 
